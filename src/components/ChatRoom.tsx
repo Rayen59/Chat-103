@@ -210,6 +210,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const [pollAllowMultiple, setPollAllowMultiple] = useState(false);
   const [activePollMsg, setActivePollMsg] = useState<Message | null>(null);
 
+  // @ Mention auto-complete state (featuring MK.ia AI and chat members)
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState<number>(0);
+  const [selectedMentionIdx, setSelectedMentionIdx] = useState<number>(0);
+
   // Scroll & UX states
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [unreadBelowCount, setUnreadBelowCount] = useState(0);
@@ -649,7 +654,139 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     setShowCreatePollModal(false);
   };
 
+  // Mention Candidate List computation (MK.ia AI is always prioritized on top)
+  const mkAiUser: User = {
+    id: "user_mk_ai",
+    email: "mk.ia@wavegram.internal",
+    username: "MK.ia",
+    avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=MKIAGemini&backgroundColor=3390ec,17212b",
+    bio: "MK Wavegram Official Gemini AI Assistant ⚡",
+    status: "online",
+    createdAt: new Date("2025-01-01").toISOString(),
+    hasAccount: true,
+    badges: ["MK.ia", "Gemini Deep AI"]
+  };
+
+  const getMentionCandidates = () => {
+    if (mentionQuery === null) return [];
+    const query = mentionQuery.toLowerCase();
+
+    const candidates: Array<{ user: User; isAi?: boolean; description?: string }> = [
+      {
+        user: mkAiUser,
+        isAi: true,
+        description: "Deep Gemini AI Assistant (Code, Math, Analysis, Brainstorming)"
+      }
+    ];
+
+    // Add other chat participants
+    allUsers.forEach((u) => {
+      if (u.id !== currentUser.id && u.id !== mkAiUser.id && u.username) {
+        if (!candidates.some((c) => c.user.id === u.id)) {
+          candidates.push({
+            user: u,
+            isAi: false,
+            description: u.bio || `@${u.username}`
+          });
+        }
+      }
+    });
+
+    if (!query) return candidates.slice(0, 6);
+
+    return candidates
+      .filter(
+        (c) =>
+          c.user.username.toLowerCase().includes(query) ||
+          (c.description && c.description.toLowerCase().includes(query)) ||
+          (c.isAi && (query === "m" || query === "mk" || query === "ai" || query === "gemini" || query === "ia"))
+      )
+      .slice(0, 6);
+  };
+
+  const mentionCandidates = getMentionCandidates();
+
+  const handleSelectMention = (candidate: { user: User; isAi?: boolean }) => {
+    const textBefore = inputText.slice(0, mentionIndex);
+    const textAfter = inputText.slice(mentionIndex);
+    // Find where the query token ends
+    const match = textAfter.match(/^[a-zA-Z0-9._]*/);
+    const tokenLength = match ? match[0].length : 0;
+    const rest = textAfter.slice(tokenLength);
+
+    const tagToInsert = candidate.isAi ? "@MK.ia " : `@${candidate.user.username} `;
+    const newText = textBefore + tagToInsert + (rest.startsWith(" ") ? rest.slice(1) : rest);
+
+    setInputText(newText);
+    setMentionQuery(null);
+
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      const newCursorPos = textBefore.length + tagToInsert.length;
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = newCursorPos;
+          textareaRef.current.selectionEnd = newCursorPos;
+        }
+      }, 20);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setInputText(val);
+    e.target.style.height = "auto";
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+
+    // Check cursor position for @ trigger
+    const cursorPos = e.target.selectionStart || val.length;
+    const textUpToCursor = val.slice(0, cursorPos);
+    const lastAtIndex = textUpToCursor.lastIndexOf("@");
+
+    if (lastAtIndex !== -1) {
+      // Check that @ is either at start or preceded by whitespace
+      const charBeforeAt = lastAtIndex > 0 ? textUpToCursor[lastAtIndex - 1] : " ";
+      if (/\s/.test(charBeforeAt)) {
+        const query = textUpToCursor.slice(lastAtIndex + 1);
+        if (!/\s/.test(query)) {
+          setMentionQuery(query);
+          setMentionIndex(lastAtIndex);
+          setSelectedMentionIdx(0);
+          return;
+        }
+      }
+    }
+
+    setMentionQuery(null);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionQuery !== null && mentionCandidates.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedMentionIdx((prev) => (prev + 1) % mentionCandidates.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedMentionIdx((prev) => (prev - 1 + mentionCandidates.length) % mentionCandidates.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        const candidate = mentionCandidates[selectedMentionIdx] || mentionCandidates[0];
+        if (candidate) {
+          handleSelectMention(candidate);
+        }
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMentionQuery(null);
+        return;
+      }
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -2132,6 +2269,76 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
             </div>
           )}
 
+          {/* @ Mention Suggestions Popup (MK.ia AI + Members) */}
+          {mentionQuery !== null && mentionCandidates.length > 0 && (
+            <div className="max-w-4xl mx-auto mb-2 bg-[#09112a]/95 border border-cyan-500/40 rounded-2xl p-2 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 z-30">
+              <div className="flex items-center justify-between px-2.5 py-1 mb-1 border-b border-blue-950/60">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Mention in Chat</span>
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  Use ↑ ↓ to navigate, Enter or Tab to select
+                </span>
+              </div>
+              <div className="space-y-1 max-h-52 overflow-y-auto">
+                {mentionCandidates.map((candidate, idx) => {
+                  const isHighlighted = idx === selectedMentionIdx;
+                  return (
+                    <button
+                      key={candidate.user.id}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleSelectMention(candidate);
+                      }}
+                      onMouseEnter={() => setSelectedMentionIdx(idx)}
+                      className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-all cursor-pointer ${
+                        isHighlighted
+                          ? "bg-cyan-950/70 border border-cyan-500/50 shadow-md"
+                          : "hover:bg-[#0c1636] border border-transparent"
+                      }`}
+                    >
+                      <div className="relative shrink-0">
+                        <img
+                          src={candidate.user.avatar}
+                          alt={candidate.user.username}
+                          className={`w-8 h-8 rounded-full object-cover bg-slate-800 ${
+                            candidate.isAi
+                              ? "ring-2 ring-cyan-400 shadow-sm shadow-cyan-400/50"
+                              : "ring-1 ring-white/10"
+                          }`}
+                        />
+                        {candidate.isAi && (
+                          <div className="absolute -bottom-1 -right-1 p-0.5 bg-cyan-500 text-[#02040a] rounded-full">
+                            <Zap className="w-2.5 h-2.5 fill-current" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-bold text-xs ${candidate.isAi ? "text-cyan-300" : "text-slate-200"}`}>
+                            @{candidate.user.username}
+                          </span>
+                          {candidate.isAi ? (
+                            <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-gradient-to-r from-cyan-500 to-blue-500 text-black rounded-md">
+                              AI GEMINI
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400">Member</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                          {candidate.description || candidate.user.bio || `@${candidate.user.username}`}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* RECORDING MODE BANNER */}
           {isRecording ? (
             <div className="max-w-4xl mx-auto w-full bg-[#0e1621] border border-rose-500/40 rounded-full px-4 py-2 flex items-center justify-between text-rose-300 text-xs shadow-2xl backdrop-blur-lg">
@@ -2181,18 +2388,14 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 <textarea
                   ref={textareaRef}
                   rows={1}
-                  placeholder="Message"
+                  placeholder="Message (type @ for MK.ia & members)"
                   value={inputText}
                   onFocus={() => {
                     setTimeout(() => {
                       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
                     }, 120);
                   }}
-                  onChange={(e) => {
-                    setInputText(e.target.value);
-                    e.target.style.height = "auto";
-                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                  }}
+                  onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
                   style={{ minHeight: "26px", maxHeight: "120px" }}
