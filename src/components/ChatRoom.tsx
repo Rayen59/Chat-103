@@ -351,6 +351,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any>(null);
   const longPressTimerRef = useRef<any>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const touchMovedRef = useRef<boolean>(false);
   const recordingSecondsRef = useRef<number>(0);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
@@ -490,6 +492,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
   // Handle scrolling detection
   const handleScroll = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchMovedRef.current = true;
     if (!scrollContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
@@ -678,8 +685,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     }
   };
 
-  // Double Click handler for instant Like ❤️ with animated floating particles
+  // Double Click handler for instant Like ❤️ (desktop only, disabled during mobile touch/scroll)
   const handleDoubleClick = (msg: Message, e?: React.MouseEvent) => {
+    if (touchMovedRef.current) return;
+    if (e && (e.nativeEvent as any)?.pointerType === "touch") return;
+
     onReactMessage(msg.id, "❤️", true);
 
     const emojis = ["❤️", "💖", "💘", "💕", "💓", "✨", "🔥"];
@@ -697,17 +707,58 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
     }, 1200);
   };
 
-  // Long press for touch devices
-  const handleTouchStart = (msg: Message) => {
+  // Long press for touch devices with active scroll detection
+  const handleTouchStart = (e: React.TouchEvent, msg: Message) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    const touch = e.touches[0];
+    if (!touch) return;
+    touchMovedRef.current = false;
+    touchStartPosRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+
     longPressTimerRef.current = setTimeout(() => {
-      setContextMenuMsg(msg);
-    }, 450);
+      // Only open context menu if user hasn't moved their finger or scrolled
+      if (!touchMovedRef.current) {
+        setContextMenuMsg(msg);
+      }
+    }, 650);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartPosRef.current && e.touches[0]) {
+      const dx = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+      const dy = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+      // If moved by more than 6px, the user is scrolling -> cancel immediately
+      if (dx > 6 || dy > 6) {
+        touchMovedRef.current = true;
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
+    }
   };
 
   const handleTouchEnd = () => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
     }
+    touchStartPosRef.current = null;
+    setTimeout(() => {
+      touchMovedRef.current = false;
+    }, 150);
+  };
+
+  const handleTouchCancel = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPosRef.current = null;
+    touchMovedRef.current = false;
   };
 
   // Media Attachment Upload
@@ -1306,9 +1357,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       e.preventDefault();
                       setContextMenuMsg(msg);
                     }}
-                    onTouchStart={() => handleTouchStart(msg)}
+                    onTouchStart={(e) => handleTouchStart(e, msg)}
+                    onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
-                    className={`relative w-full rounded-2xl p-2.5 text-sm shadow-sm transition-all cursor-pointer ${
+                    onTouchCancel={handleTouchCancel}
+                    className={`relative w-full rounded-2xl p-2.5 text-sm shadow-sm transition-all select-none sm:select-text ${
                       isSelected
                         ? "ring-2 ring-[#3390ec]"
                         : ""
@@ -1720,11 +1773,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   </div>
                 </div>
 
-                {/* Message Hover Actions Toolbar */}
+                {/* Message Hover Actions Toolbar (Desktop hover only) */}
                 <div
                   className={`absolute top-0 ${
                     isMe ? "right-full mr-2" : "left-full ml-2"
-                  } hidden group-hover:flex items-center gap-1 bg-[#09112a] border border-blue-900/50 rounded-2xl p-1 shadow-xl z-20`}
+                  } hidden md:group-hover:flex items-center gap-1 bg-[#09112a] border border-blue-900/50 rounded-2xl p-1 shadow-xl z-20`}
                 >
                   <button
                     onClick={() => setContextMenuMsg(msg)}
