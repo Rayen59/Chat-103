@@ -1,0 +1,6 @@
+{
+  "name": "MK-wavegram",
+  "description": "MK-wavegram - Next-generation messaging platform with real-time messaging, multi-message selection, forward, personal notes, privacy rules, 24h stories, and voice/video calls.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
