@@ -56,6 +56,18 @@ export const MK_AI_USER: User = {
 // Backward compatibility alias
 export const WIA_AI_USER = MK_AI_USER;
 
+export function isUserAdmin(user?: User | null): boolean {
+  if (!user) return false;
+  const email = (user.email || "").toLowerCase().trim();
+  return (
+    user.role === "admin" ||
+    user.id === "user_admin_mk" ||
+    email === "addmmin@gmail.com" ||
+    email === "admin@gmail.com" ||
+    email === "admin@wavegram.com"
+  );
+}
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
@@ -87,6 +99,58 @@ let store: DataStore = {
 };
 
 function ensureOfficialEntities() {
+  // Ensure default demo contacts exist so users always see vibrant contacts
+  const defaultUsers: User[] = [
+    {
+      id: "user_alex",
+      email: "alex@wavegram.com",
+      username: "Alex Morgan",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      bio: "Exploring the world with MK-wavegram 🚀",
+      status: "online",
+      createdAt: "2025-01-01T00:00:00.000Z",
+      badges: ["VIP", "Verified"],
+      hasAccount: true,
+      acceptedPrivacyTerms: true,
+      privacyAcceptedAt: "2025-01-01T00:00:00.000Z"
+    },
+    {
+      id: "user_sarah",
+      email: "sarah@wavegram.com",
+      username: "Sarah Jenkins",
+      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+      bio: "Design lead @ MK-wavegram | Coffee enthusiast ☕",
+      status: "online",
+      createdAt: "2025-01-01T00:00:00.000Z",
+      badges: ["Design Team"],
+      hasAccount: true,
+      acceptedPrivacyTerms: true,
+      privacyAcceptedAt: "2025-01-01T00:00:00.000Z"
+    },
+    {
+      id: "user_david",
+      email: "david@wavegram.com",
+      username: "David Chen",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+      bio: "Audio engineer & podcaster 🎙️",
+      status: "away",
+      createdAt: "2025-01-01T00:00:00.000Z",
+      badges: ["Voice Master"],
+      hasAccount: true,
+      acceptedPrivacyTerms: true,
+      privacyAcceptedAt: "2025-01-01T00:00:00.000Z"
+    }
+  ];
+
+  defaultUsers.forEach((du) => {
+    if (!store.users.some((u) => u.id === du.id || u.email.toLowerCase() === du.email.toLowerCase())) {
+      store.users.push(du);
+    }
+    if (!store.passwords[du.email]) {
+      store.passwords[du.email] = "password123";
+    }
+  });
+
   // Ensure Admin User exists and is configured
   let adminUser = store.users.find(
     (u) =>
@@ -166,7 +230,7 @@ function ensureOfficialEntities() {
       lastMessage: {
         text: "⚡ Welcome to MK Wavegram! Stay tuned for official announcements and security updates.",
         senderId: "user_admin_mk",
-        senderName: "MK Admin",
+        senderName: "MK Admin 👑",
         createdAt: new Date().toISOString()
       },
       updatedAt: new Date().toISOString()
@@ -3707,8 +3771,8 @@ app.post("/api/reports/submit", (req: Request, res: Response) => {
 // 3. Admin: Fetch all reports
 app.get("/api/admin/reports", (req: Request, res: Response) => {
   const adminId = req.query.adminId as string;
-  const admin = store.users.find((u) => u.id === adminId);
-  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+  const admin = store.users.find((u) => u.id === adminId || u.email.toLowerCase() === (adminId || "").toLowerCase());
+  if (!isUserAdmin(admin)) {
     return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
   }
 
@@ -3718,8 +3782,8 @@ app.get("/api/admin/reports", (req: Request, res: Response) => {
 // 4. Admin: Resolve / Dismiss Report
 app.post("/api/admin/reports/resolve", (req: Request, res: Response) => {
   const { adminId, reportId, status, adminNotes } = req.body;
-  const admin = store.users.find((u) => u.id === adminId);
-  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+  const admin = store.users.find((u) => u.id === adminId || u.email.toLowerCase() === (adminId || "").toLowerCase());
+  if (!isUserAdmin(admin)) {
     return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
   }
 
@@ -3738,8 +3802,8 @@ app.post("/api/admin/reports/resolve", (req: Request, res: Response) => {
 // 5. Admin: AI Moderation Assistant on a Report (using Gemini)
 app.post("/api/admin/ai-analyze-report", async (req: Request, res: Response) => {
   const { adminId, reportId } = req.body;
-  const admin = store.users.find((u) => u.id === adminId);
-  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+  const admin = store.users.find((u) => u.id === adminId || u.email.toLowerCase() === (adminId || "").toLowerCase());
+  if (!isUserAdmin(admin)) {
     return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
   }
 
@@ -3803,15 +3867,15 @@ Return valid JSON strictly matching this schema:
 // 6. Admin: Ban User (3d, 7d, 10d, 30d, permanent)
 app.post("/api/admin/users/ban", (req: Request, res: Response) => {
   const { adminId, targetUserId, duration, reason } = req.body;
-  const admin = store.users.find((u) => u.id === adminId);
-  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+  const admin = store.users.find((u) => u.id === adminId || u.email.toLowerCase() === (adminId || "").toLowerCase());
+  if (!isUserAdmin(admin)) {
     return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
   }
 
   const targetUser = store.users.find((u) => u.id === targetUserId);
   if (!targetUser) return res.status(404).json({ error: "Target user not found." });
 
-  if (targetUser.role === "admin" || targetUser.email === "addmmin@gmail.com") {
+  if (isUserAdmin(targetUser)) {
     return res.status(400).json({ error: "Cannot ban an administrator account." });
   }
 
@@ -3851,8 +3915,8 @@ app.post("/api/admin/users/ban", (req: Request, res: Response) => {
 // 7. Admin: Unban User
 app.post("/api/admin/users/unban", (req: Request, res: Response) => {
   const { adminId, targetUserId } = req.body;
-  const admin = store.users.find((u) => u.id === adminId);
-  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+  const admin = store.users.find((u) => u.id === adminId || u.email.toLowerCase() === (adminId || "").toLowerCase());
+  if (!isUserAdmin(admin)) {
     return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
   }
 
@@ -3875,8 +3939,8 @@ app.post("/api/admin/users/unban", (req: Request, res: Response) => {
 // 8. Admin: Get user activity & context inspection
 app.get("/api/admin/users/:userId/activity", (req: Request, res: Response) => {
   const adminId = req.query.adminId as string;
-  const admin = store.users.find((u) => u.id === adminId);
-  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+  const admin = store.users.find((u) => u.id === adminId || u.email.toLowerCase() === (adminId || "").toLowerCase());
+  if (!isUserAdmin(admin)) {
     return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
   }
 
@@ -3902,8 +3966,8 @@ app.get("/api/admin/users/:userId/activity", (req: Request, res: Response) => {
 // 9. Admin: Get reported message context
 app.get("/api/admin/messages/context/:messageId", (req: Request, res: Response) => {
   const adminId = req.query.adminId as string;
-  const admin = store.users.find((u) => u.id === adminId);
-  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+  const admin = store.users.find((u) => u.id === adminId || u.email.toLowerCase() === (adminId || "").toLowerCase());
+  if (!isUserAdmin(admin)) {
     return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
   }
 
@@ -3928,17 +3992,17 @@ app.get("/api/admin/messages/context/:messageId", (req: Request, res: Response) 
 // 10. Admin: Push official broadcast notification to MK Official Channel
 app.post("/api/admin/broadcast", (req: Request, res: Response) => {
   const { adminId, title, message, priority = "high" } = req.body;
-  const admin = store.users.find((u) => u.id === adminId);
-  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+  const admin = store.users.find((u) => u.id === adminId || u.email.toLowerCase() === (adminId || "").toLowerCase());
+  if (!isUserAdmin(admin)) {
     return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
   }
 
-  const conv = store.conversations.find((c) => c.id === "conv_mk_official");
+  const conv = store.conversations.find((c) => c.id === "conv_mk_official" || c.isOfficialChannel);
   if (!conv) return res.status(404).json({ error: "Official channel not found." });
 
   const broadcastMsg: Message = {
     id: "msg_bc_" + Math.random().toString(36).substring(2, 10),
-    conversationId: "conv_mk_official",
+    conversationId: conv.id,
     senderId: admin.id,
     senderName: "MK Admin Official 👑",
     senderAvatar: admin.avatar,
@@ -3960,7 +4024,8 @@ app.post("/api/admin/broadcast", (req: Request, res: Response) => {
   conv.updatedAt = broadcastMsg.createdAt;
   saveStore();
 
-  broadcastEvent("new_message", broadcastMsg, conv.participants);
+  // Send to all connected subscribers
+  broadcastEvent("new_message", broadcastMsg);
   broadcastEvent("official_broadcast", {
     id: broadcastMsg.id,
     title,

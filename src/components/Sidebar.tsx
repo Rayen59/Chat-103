@@ -140,12 +140,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     (r) => r.fromUserId === currentUser.id
   );
 
-  const filteredUsers = allUsers.filter(
-    (u) =>
-      u.id !== currentUser.id &&
-      (u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (!u.hideEmail && !u.isPrivate && u.email.toLowerCase().includes(searchQuery.toLowerCase())))
-  );
+  const filteredUsers = allUsers.filter((u) => {
+    if (!u || u.id === currentUser.id) return false;
+    const query = (searchQuery || "").toLowerCase().trim();
+    if (!query) return true;
+    const nameMatch = (u.username || "").toLowerCase().includes(query);
+    const emailMatch = !u.hideEmail && (u.email || "").toLowerCase().includes(query);
+    const bioMatch = (u.bio || "").toLowerCase().includes(query);
+    return nameMatch || emailMatch || bioMatch;
+  });
 
   const filteredConversations = conversations.filter((c) => {
     if (c.id === "conv_mk_official" || c.isOfficialChannel) return true;
@@ -594,7 +597,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               isGroup ? targetGroupObj : targetUserObj
                             );
                           }}
-                          title="Signaler / Report"
+                          title="Report & Safety Flag"
                           className="p-1.5 rounded-full text-[#7d8b99] hover:text-red-400 hover:bg-[#17212b] transition-all"
                         >
                           <ShieldAlert className="w-4 h-4" />

@@ -1170,7 +1170,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           {onToggleMute && (
             <button
               onClick={() => onToggleMute(conversation.id, !isMuted)}
-              title={isMuted ? "Rétablir le son (Unmute)" : "Mettre en sourdine (Mute)"}
+              title={isMuted ? "Unmute Notifications" : "Mute Notifications"}
               className={`p-2 rounded-full transition-colors ${
                 isMuted ? "text-amber-400 bg-amber-500/20 hover:bg-amber-500/30" : "text-[#7d8b99] hover:text-white hover:bg-[#202b36]"
               }`}
@@ -1228,7 +1228,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               {onOpenReportModal && !isOfficialChannel && (
                 <button
                   onClick={() => onOpenReportModal("group", group)}
-                  title="Signaler ce groupe (Report)"
+                  title="Report Group"
                   className="p-2 rounded-full text-[#7d8b99] hover:text-rose-400 hover:bg-[#202b36] transition-colors"
                 >
                   <ShieldAlert className="w-4 h-4" />
@@ -1267,7 +1267,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#202b36] text-white transition-colors"
                     >
                       {isMuted ? <Volume2 className="w-4 h-4 text-amber-400" /> : <VolumeX className="w-4 h-4 text-[#7d8b99]" />}
-                      <span>{isMuted ? "Rétablir le son (Unmute)" : "Mettre en sourdine (Mute)"}</span>
+                      <span>{isMuted ? "Unmute Notifications" : "Mute Notifications"}</span>
                     </button>
                   )}
 
@@ -1302,7 +1302,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                       className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-rose-950/30 text-rose-300 transition-colors"
                     >
                       <ShieldAlert className="w-4 h-4 text-rose-400" />
-                      <span>Signaler cet utilisateur</span>
+                      <span>Report User</span>
                     </button>
                   )}
 
@@ -2131,7 +2131,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
         <div className="p-3.5 bg-[#17212b] border-t border-[#101921] flex flex-wrap items-center justify-between px-4 gap-2 text-xs text-slate-300">
           <div className="flex items-center gap-2">
             <Megaphone className="w-4 h-4 text-[#3390ec] shrink-0" />
-            <span>📢 <strong>Canal Officiel MK :</strong> Seul l'administrateur peut publier des annonces et alertes globales.</span>
+            <span>📢 <strong>MK Official Channel:</strong> Broadcasts and platform announcements are posted exclusively by MK Administrators.</span>
           </div>
           {onToggleMute && (
             <button
@@ -2139,7 +2139,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               className="px-3 py-1.5 bg-[#202b36] hover:bg-[#283644] text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
             >
               {isMuted ? <Volume2 className="w-3.5 h-3.5 text-amber-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
-              <span>{isMuted ? "Rétablir le son" : "Mode Muet"}</span>
+              <span>{isMuted ? "Unmute Channel" : "Mute Channel"}</span>
             </button>
           )}
         </div>
@@ -2958,7 +2958,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-rose-950/30 text-rose-400 transition-colors"
                 >
                   <ShieldAlert className="w-4 h-4 text-rose-400" />
-                  <span>Signaler ce message (Report)</span>
+                  <span>Report Message</span>
                 </button>
               )}
 

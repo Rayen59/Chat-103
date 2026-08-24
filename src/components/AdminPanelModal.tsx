@@ -91,6 +91,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   useEffect(() => {
     fetchReports();
+    const interval = setInterval(fetchReports, 5000);
+    return () => clearInterval(interval);
   }, [currentUser.id]);
 
   const handleRunAiAnalysis = async (reportId: string) => {
@@ -740,15 +742,31 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           {/* TAB 3: BROADCAST STUDIO */}
           {activeTab === "broadcast" && (
             <div className="flex-1 p-8 overflow-y-auto max-w-2xl mx-auto space-y-6">
-              <div className="border-b border-[#242f3d] pb-4">
-                <div className="flex items-center space-x-2 text-[#3390ec] text-xs font-bold uppercase tracking-wider">
-                  <Radio className="w-4 h-4" />
-                  <span>MK Official Broadcast Engine ⚡</span>
+              <div className="border-b border-[#242f3d] pb-4 flex items-start justify-between">
+                <div>
+                  <div className="flex items-center space-x-2 text-[#3390ec] text-xs font-bold uppercase tracking-wider">
+                    <Radio className="w-4 h-4" />
+                    <span>MK Official Broadcast Engine ⚡</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mt-1">Push Broadcast to All Users</h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Send real-time alerts or platform notices to all users via the pinned MK Official Channel.
+                  </p>
                 </div>
-                <h3 className="text-xl font-bold text-white mt-1">Push Broadcast to All Users</h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Send real-time alerts or platform notices to all users via the pinned MK Official Channel.
-                </p>
+
+                {onOpenMKChannel && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenMKChannel();
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 hover:bg-[#3390ec]/30 text-[#3390ec] text-xs font-semibold flex items-center space-x-1.5 transition shrink-0"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Open Channel in Chat</span>
+                  </button>
+                )}
               </div>
 
               {broadcastSuccess && (

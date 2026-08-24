@@ -459,6 +459,29 @@ export default function App() {
     });
 
     // Chat requests / private invitations
+    eventSource.addEventListener("new_report", (e: any) => {
+      const rep = JSON.parse(e.data);
+      const isCurrAdmin =
+        currentUser.role === "admin" ||
+        currentUser.id === "user_admin_mk" ||
+        currentUser.email.toLowerCase() === "addmmin@gmail.com" ||
+        currentUser.email.toLowerCase() === "admin@gmail.com";
+
+      if (isCurrAdmin) {
+        playNotificationSound();
+        const notif: AppNotification = {
+          id: Math.random().toString(),
+          type: "system",
+          title: "🚨 New User Report Received",
+          senderName: rep.reporterName || "MK Wavegram User",
+          senderAvatar: rep.reporterAvatar,
+          text: `Flagged ${rep.targetType} (${rep.targetName}): ${rep.reason}`,
+          createdAt: rep.createdAt || new Date().toISOString()
+        };
+        setNotifications((prev) => [...prev, notif]);
+      }
+    });
+
     eventSource.addEventListener("new_chat_request", (e: any) => {
       const newReq: ChatRequest = JSON.parse(e.data);
       setChatRequests((prev) => {

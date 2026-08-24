@@ -141,13 +141,13 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-semibold text-white flex items-center space-x-1.5">
-                <span>Signaler / Report</span>
+                <span>Submit Safety Report</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-medium uppercase tracking-wider">
                   {targetType}
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Help keep the MK Wavegram community safe and respectful
+                Help keep the MK Wavegram community safe, secure, and respectful
               </p>
             </div>
           </div>
@@ -166,9 +166,9 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 animate-bounce">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h4 className="text-lg font-bold text-white">Signalement Envoyé / Report Submitted</h4>
+            <h4 className="text-lg font-bold text-white">Report Successfully Transmitted</h4>
             <p className="text-sm text-slate-300 max-w-xs leading-relaxed">
-              Your signal has been securely sent to the MK Administrator with complete context. The admin team will review it shortly.
+              Your signal has been securely sent to the MK Administrator with complete context. The admin moderation team will review it shortly.
             </p>
           </div>
         ) : (
@@ -207,7 +207,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             {/* Select Reason */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Motif du Signalement / Reason for Report <span className="text-red-400">*</span>
+                Reason for Report <span className="text-red-400">*</span>
               </label>
               <div className="grid grid-cols-1 gap-2">
                 {REPORT_REASONS.map((r) => (
@@ -238,13 +238,13 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             {/* Custom Explanation */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
-                <span>Détails & Explication / Explanation Details</span>
+                <span>Additional Details & Context</span>
                 <span className="text-xs text-slate-500 font-normal">Optional / Handwritten</span>
               </label>
               <textarea
                 value={customExplanation}
                 onChange={(e) => setCustomExplanation(e.target.value)}
-                placeholder="Explain what happened or give additional context for the administrator..."
+                placeholder="Explain what happened or provide additional context for the administrator..."
                 rows={3}
                 className="w-full bg-[#0e1621] border border-[#242f3d] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#3390ec] resize-none"
               />
