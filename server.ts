@@ -88,15 +88,24 @@ let store: DataStore = {
 
 function ensureOfficialEntities() {
   // Ensure Admin User exists and is configured
-  const existingAdminIdx = store.users.findIndex((u) => u.email.toLowerCase() === "addmmin@gmail.com");
-  if (existingAdminIdx === -1) {
-    store.users.unshift(ADMIN_USER);
+  let adminUser = store.users.find(
+    (u) =>
+      u.email.toLowerCase() === "addmmin@gmail.com" ||
+      u.email.toLowerCase() === "admin@gmail.com" ||
+      u.id === "user_admin_mk"
+  );
+  if (!adminUser) {
+    adminUser = { ...ADMIN_USER };
+    store.users.unshift(adminUser);
   } else {
-    store.users[existingAdminIdx].role = "admin";
-    store.users[existingAdminIdx].badges = ["Admin Panel", "System Overseer", "Verified"];
-    store.users[existingAdminIdx].isBanned = false;
+    adminUser.role = "admin";
+    adminUser.badges = ["Admin Panel", "System Overseer", "Verified"];
+    adminUser.isBanned = false;
   }
+  // Store passwords for official admin email and common spelling aliases
   store.passwords["addmmin@gmail.com"] = "adminadmin12";
+  store.passwords["admin@gmail.com"] = "adminadmin12";
+  store.passwords["admin@wavegram.com"] = "adminadmin12";
 
   // Ensure MK.ia AI exists
   if (!store.users.some((u) => u.id === MK_AI_USER.id)) {
@@ -730,20 +739,48 @@ app.post("/api/auth/register", (req: Request, res: Response) => {
   const { email, username, password, avatar, bio } = req.body;
 
   if (!email || !username || !password) {
-    return res.status(400).json({ error: "Email, username, and password are required." });
+    return res.status(400).json({ error: "Email, display name, and password are required." });
   }
 
   const normalizedEmail = email.toLowerCase().trim();
 
-  // Enforce reservation of admin credentials
-  if (normalizedEmail === "addmmin@gmail.com") {
-    return res.status(403).json({ error: "The email addmmin@gmail.com is exclusively reserved for the Administrator." });
+  // If user tries to register with admin credentials, smoothly authenticate them as the Admin
+  const isAdminEmail =
+    normalizedEmail === "addmmin@gmail.com" ||
+    normalizedEmail === "admin@gmail.com" ||
+    normalizedEmail === "admin@wavegram.com";
+
+  if (isAdminEmail) {
+    if (password === "adminadmin12") {
+      let adminUser = store.users.find(
+        (u) =>
+          u.email.toLowerCase() === "addmmin@gmail.com" ||
+          u.email.toLowerCase() === "admin@gmail.com" ||
+          u.id === "user_admin_mk"
+      );
+      if (!adminUser) {
+        adminUser = { ...ADMIN_USER };
+        store.users.unshift(adminUser);
+      }
+      adminUser.role = "admin";
+      adminUser.badges = ["Admin Panel", "System Overseer", "Verified"];
+      adminUser.isBanned = false;
+      adminUser.status = "online";
+      saveStore();
+      return res.json({ user: adminUser });
+    } else {
+      return res.status(400).json({
+        error: "The administrator account requires the official admin password (adminadmin12)."
+      });
+    }
   }
 
   // Enforce single-use email check
   const existingUser = store.users.find((u) => u.email.toLowerCase() === normalizedEmail);
   if (existingUser) {
-    return res.status(400).json({ error: "This email address is already registered. Please sign in or use another email." });
+    return res.status(400).json({
+      error: "This email address is already registered. Please sign in or use another email."
+    });
   }
 
   const defaultAvatar =
@@ -755,7 +792,7 @@ app.post("/api/auth/register", (req: Request, res: Response) => {
     email: normalizedEmail,
     username: username.trim(),
     avatar: defaultAvatar,
-    bio: bio || "Hey there! I am using Wavegram.",
+    bio: bio || "Hey there! I am using MK Wavegram.",
     status: "online",
     role: "user",
     createdAt: new Date().toISOString(),
@@ -793,17 +830,43 @@ app.post("/api/auth/login", (req: Request, res: Response) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+
+  // Check if admin credentials with spelling aliases
+  const isAdminEmail =
+    normalizedEmail === "addmmin@gmail.com" ||
+    normalizedEmail === "admin@gmail.com" ||
+    normalizedEmail === "admin@wavegram.com";
+
+  if (isAdminEmail) {
+    if (password === "adminadmin12") {
+      let adminUser = store.users.find(
+        (u) =>
+          u.email.toLowerCase() === "addmmin@gmail.com" ||
+          u.email.toLowerCase() === "admin@gmail.com" ||
+          u.id === "user_admin_mk"
+      );
+      if (!adminUser) {
+        adminUser = { ...ADMIN_USER };
+        store.users.unshift(adminUser);
+      }
+      adminUser.role = "admin";
+      adminUser.badges = ["Admin Panel", "System Overseer", "Verified"];
+      adminUser.isBanned = false;
+      adminUser.status = "online";
+      saveStore();
+      broadcastEvent("user_status", { userId: adminUser.id, status: "online" });
+      return res.json({ user: adminUser });
+    } else {
+      return res.status(401).json({
+        error: "Invalid administrator password. Please check your credentials (adminadmin12)."
+      });
+    }
+  }
+
   const user = store.users.find((u) => u.email.toLowerCase() === normalizedEmail);
 
   if (!user || store.passwords[normalizedEmail] !== password) {
-    return res.status(401).json({ error: "Invalid email or password." });
-  }
-
-  // Ensure admin role for official admin account
-  if (normalizedEmail === "addmmin@gmail.com") {
-    user.role = "admin";
-    user.badges = ["Admin Panel", "System Overseer", "Verified"];
-    user.isBanned = false;
+    return res.status(401).json({ error: "Invalid email or password. Please verify your credentials." });
   }
 
   // Check Ban Status
@@ -1160,8 +1223,17 @@ app.get("/api/conversations", (req: Request, res: Response) => {
   const userId = req.query.userId as string;
   if (!userId) return res.status(400).json({ error: "userId required" });
 
+  // Ensure MK official channel includes this user
+  let mkConv = store.conversations.find((c) => c.id === "conv_mk_official" || c.isOfficialChannel);
+  if (mkConv) {
+    if (!mkConv.participants.includes(userId)) {
+      mkConv.participants.push(userId);
+      saveStore();
+    }
+  }
+
   const userConvs = store.conversations.filter((c) =>
-    c.participants.includes(userId)
+    c.participants.includes(userId) || c.id === "conv_mk_official" || c.isOfficialChannel
   );
 
   return res.json({ conversations: userConvs });

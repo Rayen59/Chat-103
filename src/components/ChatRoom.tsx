@@ -464,7 +464,10 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const otherUser = allUsers.find((u) => u.id === otherUserId);
 
   const isOfficialChannel = conversation.id === "conv_mk_official" || !!conversation.isOfficialChannel;
-  const isAdmin = currentUser.role === "admin" || currentUser.email === "addmmin@gmail.com";
+  const isAdmin =
+    currentUser.role === "admin" ||
+    currentUser.email === "addmmin@gmail.com" ||
+    currentUser.email === "admin@gmail.com";
   const isMuted = currentUser.mutedConversationIds?.includes(conversation.id);
   const isMKReadOnly = isOfficialChannel && !isAdmin;
 

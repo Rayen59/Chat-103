@@ -128,7 +128,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [showDropdownMenu, setShowDropdownMenu] = useState(false);
   const [showFabMenu, setShowFabMenu] = useState(false);
 
-  const isAdmin = currentUser.role === "admin" || currentUser.email === "addmmin@gmail.com";
+  const isAdmin =
+    currentUser.role === "admin" ||
+    currentUser.email === "addmmin@gmail.com" ||
+    currentUser.email === "admin@gmail.com";
 
   const pendingIncomingRequests = chatRequests.filter(
     (r) => r.toUserId === currentUser.id && r.status === "pending"

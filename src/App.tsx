@@ -209,9 +209,9 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "system",
-          title: isMuted ? "Mode Muet Activé" : "Notifications Réactivées",
-          senderName: "Système MK",
-          text: isMuted ? "Cette conversation est maintenant en sourdine." : "Vous recevrez des alertes pour cette discussion.",
+          title: isMuted ? "Conversation Muted" : "Notifications Restored",
+          senderName: "MK System",
+          text: isMuted ? "This conversation is now muted." : "You will receive notifications for this chat.",
           createdAt: new Date().toISOString()
         };
         setNotifications((prev) => [...prev, notif]);
@@ -235,17 +235,22 @@ export default function App() {
     const notif: AppNotification = {
       id: Math.random().toString(),
       type: "system",
-      title: "Signalement Enregistré",
-      senderName: "Système MK",
-      text: "Votre signalement a été transmis avec succès à l'administration MK Wavegram.",
+      title: "Report Submitted",
+      senderName: "MK System",
+      text: "Your report has been successfully transmitted to the MK Wavegram administration.",
       createdAt: new Date().toISOString()
     };
     setNotifications((prev) => [...prev, notif]);
   };
 
-  // Auto-open MK Official channel for Admin
+  // Auto-open MK Official channel for Admin or ensure it is readily accessible
   useEffect(() => {
-    if (currentUser && (currentUser.role === "admin" || currentUser.email === "addmmin@gmail.com")) {
+    if (
+      currentUser &&
+      (currentUser.role === "admin" ||
+        currentUser.email === "addmmin@gmail.com" ||
+        currentUser.email === "admin@gmail.com")
+    ) {
       if (!activeConversationId) {
         setActiveConversationId("conv_mk_official");
       }
