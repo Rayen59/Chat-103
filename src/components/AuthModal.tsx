@@ -338,25 +338,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
                 </>
               )}
             </button>
-
-            {/* Quick Admin Access Helper */}
-            <div className="pt-3 border-t border-[#101921]/80 space-y-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("addmmin@gmail.com");
-                  setPassword("adminadmin12");
-                  setError(null);
-                }}
-                className="w-full py-2 px-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4 text-amber-400" />
-                <span>👑 Quick Fill Admin Credentials</span>
-              </button>
-              <p className="text-[11px] text-center text-[#7d8b99]">
-                Admin Email: <span className="text-amber-300 font-mono">addmmin@gmail.com</span> • Pass: <span className="text-amber-300 font-mono">adminadmin12</span>
-              </p>
-            </div>
           </form>
         )}
 

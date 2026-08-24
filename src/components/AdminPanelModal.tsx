@@ -307,7 +307,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               }`}
             >
               <ShieldAlert className="w-4 h-4" />
-              <span>Signalements / Reports</span>
+              <span>Reports & Signals</span>
               {pendingReportsCount > 0 && (
                 <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[11px] flex items-center justify-center font-bold">
                   {pendingReportsCount}
@@ -727,7 +727,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           className="px-3.5 py-1.5 rounded-xl bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-600 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Unban User / Débannir</span>
+                          <span>Unban User</span>
                         </button>
                       </div>
                     </div>
