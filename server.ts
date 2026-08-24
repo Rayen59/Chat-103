@@ -2605,55 +2605,55 @@ const COMPREHENSIVE_GIFS = [
 
 // Rich Stickers Collection with dedicated Plumes / Feathers & Multi-theme Packs
 const COMPREHENSIVE_STICKERS = [
-  // 🪶 THEME 1: Plumes & Feathers (Spécial Plumes Magnifiques & Animées)
+  // 🪶 THEME 1: Feathers & Plumes (Special Animated & Luminescent Feathers)
   {
     id: "stk_feather_1",
-    title: "Plume d'Or Luminescente",
+    title: "Luminescent Golden Feather",
     category: "plumes",
-    tags: ["plume", "feather", "gold", "or", "luxe", "magic"],
+    tags: ["plume", "feather", "gold", "luxury", "magic"],
     url: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300&auto=format&fit=crop&q=80",
     isFeather: true,
     animationStyle: "gold"
   },
   {
     id: "stk_feather_2",
-    title: "Plume de Paon Royale",
+    title: "Royal Peacock Feather",
     category: "plumes",
-    tags: ["plume", "feather", "paon", "peacock", "royal", "emerald"],
+    tags: ["plume", "feather", "peacock", "royal", "emerald"],
     url: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=300&auto=format&fit=crop&q=80",
     isFeather: true,
     animationStyle: "feather-float"
   },
   {
     id: "stk_feather_3",
-    title: "Plume de Phénix Flamboyante",
+    title: "Flamboyant Phoenix Feather",
     category: "plumes",
-    tags: ["plume", "feather", "phoenix", "fire", "flamme", "epic"],
+    tags: ["plume", "feather", "phoenix", "fire", "flame", "epic"],
     url: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80",
     isFeather: true,
     animationStyle: "pulse"
   },
   {
     id: "stk_feather_4",
-    title: "Plume d'Ange Céleste",
+    title: "Celestial Angel Feather",
     category: "plumes",
-    tags: ["plume", "feather", "ange", "angel", "celestial", "pure", "white"],
+    tags: ["plume", "feather", "angel", "celestial", "pure", "white"],
     url: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=300&auto=format&fit=crop&q=80",
     isFeather: true,
     animationStyle: "feather-sway"
   },
   {
     id: "stk_feather_5",
-    title: "Plume Calligraphie d'Encre",
+    title: "Ink Calligraphy Feather Quill",
     category: "plumes",
-    tags: ["plume", "feather", "ink", "quill", "ecriture", "poesie"],
+    tags: ["plume", "feather", "ink", "quill", "calligraphy", "poetry"],
     url: "https://images.unsplash.com/photo-1583484963886-cfe2bff2945f?w=300&auto=format&fit=crop&q=80",
     isFeather: true,
     animationStyle: "feather-float"
   },
   {
     id: "stk_feather_6",
-    title: "Plume Aurore Boréale",
+    title: "Aurora Borealis Feather",
     category: "plumes",
     tags: ["plume", "feather", "aurora", "cyan", "purple", "magic", "glow"],
     url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80",
@@ -2662,18 +2662,18 @@ const COMPREHENSIVE_STICKERS = [
   },
   {
     id: "stk_feather_7",
-    title: "Plume Néon Cyberpunk",
+    title: "Cyberpunk Neon Feather",
     category: "plumes",
-    tags: ["plume", "feather", "neon", "cyber", "futur", "holo"],
+    tags: ["plume", "feather", "neon", "cyber", "future", "holo"],
     url: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=300&auto=format&fit=crop&q=80",
     isFeather: true,
     animationStyle: "glow"
   },
   {
     id: "stk_feather_8",
-    title: "Plume Féerique Pastel",
+    title: "Pastel Fairy Feather",
     category: "plumes",
-    tags: ["plume", "feather", "pink", "pastel", "fairy", "douceur"],
+    tags: ["plume", "feather", "pink", "pastel", "fairy", "soft"],
     url: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=300&auto=format&fit=crop&q=80",
     isFeather: true,
     animationStyle: "feather-sway"
