@@ -20,6 +20,11 @@ import {
   KeyRound,
   Check,
   MessageCircle,
+  Scale,
+  Gavel,
+  Trash2,
+  Eye,
+  FileText,
   AlertCircle
 } from "lucide-react";
 
@@ -31,25 +36,57 @@ interface AdminPanelModalProps {
   onUserUpdated?: (user: User) => void;
 }
 
+interface JudicialCaseData {
+  report?: UserReport | null;
+  conversation?: Conversation | null;
+  group?: any;
+  messages: Message[];
+  flaggedMessageId?: string | null;
+  reporter?: {
+    id: string;
+    username: string;
+    email: string;
+    avatar: string;
+    createdAt?: string;
+    status?: string;
+    warningsCount: number;
+    reportsFiledCount: number;
+  } | null;
+  targetUser?: {
+    id: string;
+    username: string;
+    email: string;
+    avatar: string;
+    createdAt?: string;
+    status?: string;
+    isBanned: boolean;
+    bannedUntil?: string;
+    banReason?: string;
+    warnings: any[];
+    reportsAgainstCount: number;
+  } | null;
+  participants?: User[];
+}
+
 const QUICK_REPLIES = [
   {
     title: "Content Removed & Warning Issued",
-    text: "Thank you for reporting. Our moderation team has reviewed the evidence, removed the prohibited content, and issued a formal disciplinary warning to the offending account.",
+    text: "Thank you for reporting. Our moderation team has investigated the chat context, removed the violating message, and issued an official disciplinary warning to the offending user.",
     action: "Warning Issued & Content Removed"
   },
   {
     title: "Account Suspended (7 Days)",
-    text: "Your report has been validated. The reported user has been suspended from MK Wavegram for 7 days due to violations of our community safety guidelines.",
+    text: "Your report has been verified after judicial chat inspection. The reported user has been suspended from MK Wavegram for 7 days for violating community safety standards.",
     action: "7-Day Account Suspension"
   },
   {
     title: "Account Permanently Banned",
-    text: "Thank you for helping keep our platform safe. Severe violations were verified, and the offending user's account has been permanently terminated.",
+    text: "Thank you for helping keep MK Wavegram safe. Severe violations were confirmed during judicial review, and the offender's account has been permanently terminated.",
     action: "Permanent Account Ban"
   },
   {
-    title: "No Violation Found",
-    text: "Our moderation team has thoroughly investigated the reported item. Based on our community guidelines, no direct policy violation was identified at this time.",
+    title: "No Violation Found (Dismissed)",
+    text: "Our moderation team thoroughly reviewed the entire conversation context. Based on our community guidelines, no direct policy violation was identified in this instance.",
     action: "Report Dismissed (No Violation)"
   }
 ];
@@ -61,7 +98,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenMKChannel,
   onUserUpdated
 }) => {
-  const [activeTab, setActiveTab] = useState<"reports" | "bans" | "broadcast" | "users">("reports");
+  const [activeTab, setActiveTab] = useState<"reports" | "judicial" | "bans" | "broadcast" | "users">("reports");
   const [reports, setReports] = useState<UserReport[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
   const [selectedReport, setSelectedReport] = useState<UserReport | null>(null);
@@ -105,7 +142,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     storiesCount: number;
     totalMessages: number;
   } | null>(null);
-  const [, setLoadingContext] = useState(false);
+
+  // Judicial Live Chat & Group Investigation Suite State
+  const [judicialCase, setJudicialCase] = useState<JudicialCaseData | null>(null);
+  const [loadingJudicial, setLoadingJudicial] = useState(false);
+  const [judicialSearch, setJudicialSearch] = useState("");
+  const [verdictSanction, setVerdictSanction] = useState<"none" | "warn" | "ban_3d" | "ban_7d" | "ban_10d" | "ban_30d" | "ban_permanent">("warn");
+  const [verdictReason, setVerdictReason] = useState("");
+  const [verdictReplyToReporter, setVerdictReplyToReporter] = useState("");
+  const [verdictActionSummary, setVerdictActionSummary] = useState("");
+  const [verdictDeleteMessage, setVerdictDeleteMessage] = useState(true);
+  const [verdictSubmitting, setVerdictSubmitting] = useState(false);
+  const [verdictSuccessMessage, setVerdictSuccessMessage] = useState<string | null>(null);
 
   // Broadcast Studio state
   const [broadcastTitle, setBroadcastTitle] = useState("");
@@ -263,6 +311,127 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
+  // Open Judicial Live Chat & Group Investigation Suite
+  const handleOpenJudicialInvestigation = async (report: UserReport) => {
+    setSelectedReport(report);
+    setLoadingJudicial(true);
+    setVerdictSuccessMessage(null);
+    setActiveTab("judicial");
+
+    try {
+      const params = new URLSearchParams({
+        adminId: currentUser.id || "user_admin_mk",
+        reportId: report.id
+      });
+      if (report.targetDetails?.conversationId) {
+        params.set("conversationId", report.targetDetails.conversationId);
+      }
+      if (report.reporterId) {
+        params.set("reporterId", report.reporterId);
+      }
+      if (report.targetDetails?.userId || (report.targetType === "user" ? report.targetId : "")) {
+        params.set("targetUserId", report.targetDetails?.userId || (report.targetType === "user" ? report.targetId : ""));
+      }
+      if (report.targetDetails?.groupId || (report.targetType === "group" ? report.targetId : "")) {
+        params.set("groupId", report.targetDetails?.groupId || (report.targetType === "group" ? report.targetId : ""));
+      }
+
+      const res = await fetch(`/api/admin/judicial/inspect-chat?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setJudicialCase(data);
+
+        // Pre-fill verdict form based on report context
+        setVerdictReason(`Violation of community policy regarding ${report.reason}.`);
+        setVerdictReplyToReporter(
+          `Thank you for reporting. After a full judicial investigation of the chat context, we have addressed the issue and taken disciplinary action against the offender.`
+        );
+        setVerdictActionSummary(`Sanction Enforced for ${report.reason}`);
+        setVerdictDeleteMessage(!!data.flaggedMessageId);
+      }
+    } catch (err) {
+      console.error("Failed to load judicial investigation:", err);
+    } finally {
+      setLoadingJudicial(false);
+    }
+  };
+
+  // Judicial: Redact / Delete Violating Message directly from live chat
+  const handleDeleteMessageInJudicial = async (messageId: string) => {
+    if (!confirm("Are you sure you want to permanently delete/redact this violating message from the conversation?")) return;
+    try {
+      const res = await fetch("/api/admin/judicial/delete-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminId: currentUser.id || "user_admin_mk",
+          messageId,
+          reason: selectedReport ? selectedReport.reason : "Policy Violation"
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setJudicialCase((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: [
+              ...prev.messages.filter((m) => m.id !== messageId),
+              data.auditMessage
+            ]
+          };
+        });
+      }
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+    }
+  };
+
+  // Judicial: Deliver Final Verdict & Resolution
+  const handleDeliverJudicialVerdict = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReport) return;
+
+    setVerdictSubmitting(true);
+    setVerdictSuccessMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/judicial/verdict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminId: currentUser.id || "user_admin_mk",
+          reportId: selectedReport.id,
+          targetUserId: judicialCase?.targetUser?.id || selectedReport.targetDetails?.userId || (selectedReport.targetType === "user" ? selectedReport.targetId : undefined),
+          sanction: verdictSanction,
+          sanctionReason: verdictReason.trim(),
+          replyToReporter: verdictReplyToReporter.trim(),
+          actionSummary: verdictActionSummary.trim(),
+          deleteFlaggedMessage: verdictDeleteMessage,
+          flaggedMessageId: judicialCase?.flaggedMessageId || (selectedReport.targetType === "message" ? selectedReport.targetId : undefined)
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setVerdictSuccessMessage(
+          `⚖️ Judicial Verdict Enforced! Sanction: ${verdictSanction.toUpperCase()} • Official reply dispatched to @${selectedReport.reporterName}.`
+        );
+        fetchReports();
+        if (data.report) {
+          setSelectedReport(data.report);
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Failed to deliver judicial verdict.");
+      }
+    } catch (err: any) {
+      alert(err.message || "An unexpected error occurred.");
+    } finally {
+      setVerdictSubmitting(false);
+    }
+  };
+
   const handleExecuteBan = async () => {
     if (!banningUser) return;
     setActionLoading(true);
@@ -299,7 +468,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         body: JSON.stringify({
           adminId: currentUser.id || "user_admin_mk",
           targetUserId: warningUser.id,
-          reason: warningReason.trim() || "Official Warning regarding community standards."
+          reason: warningReason.trim() || undefined
         })
       });
       if (res.ok) {
@@ -312,7 +481,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         fetchReports();
       }
     } catch (err) {
-      console.error("Warning issue failed:", err);
+      console.error("Warning failed:", err);
     } finally {
       setActionLoading(false);
     }
@@ -323,7 +492,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       const res = await fetch("/api/admin/users/unban", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId: currentUser.id || "user_admin_mk", targetUserId: userId })
+        body: JSON.stringify({
+          adminId: currentUser.id || "user_admin_mk",
+          targetUserId: userId
+        })
       });
       if (res.ok) {
         fetchReports();
@@ -333,43 +505,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
-  const handleInspectMessageContext = async (messageId: string) => {
-    setLoadingContext(true);
-    setInspectedUserActivity(null);
-    try {
-      const res = await fetch(`/api/admin/messages/context/${messageId}?adminId=${currentUser.id || "user_admin_mk"}`);
-      if (res.ok) {
-        const data = await res.json();
-        setInspectedMessageContext(data);
-      }
-    } catch (err) {
-      console.error("Context inspection failed:", err);
-    } finally {
-      setLoadingContext(false);
-    }
-  };
-
-  const handleInspectUserActivity = async (userId: string) => {
-    setLoadingContext(true);
-    setInspectedMessageContext(null);
-    try {
-      const res = await fetch(`/api/admin/users/${userId}/activity?adminId=${currentUser.id || "user_admin_mk"}`);
-      if (res.ok) {
-        const data = await res.json();
-        setInspectedUserActivity(data);
-      }
-    } catch (err) {
-      console.error("User activity inspection failed:", err);
-    } finally {
-      setLoadingContext(false);
-    }
-  };
-
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!broadcastMessage.trim()) return;
-
     setActionLoading(true);
+    setBroadcastSuccess(false);
+
     try {
       const res = await fetch("/api/admin/broadcast", {
         method: "POST",
@@ -381,145 +522,123 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           priority: broadcastPriority
         })
       });
+
       if (res.ok) {
         setBroadcastSuccess(true);
         setBroadcastTitle("");
         setBroadcastMessage("");
-        setTimeout(() => setBroadcastSuccess(false), 3000);
+        setTimeout(() => setBroadcastSuccess(false), 4000);
       }
     } catch (err) {
-      console.error("Broadcast failed:", err);
+      console.error("Broadcast push failed:", err);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const filteredReports = reports.filter((rep) => {
-    const matchesFilter =
-      reportFilter === "all"
-        ? true
-        : reportFilter === "pending"
-        ? rep.status === "pending" || rep.status === "reviewed"
-        : rep.status === reportFilter;
-
-    const matchesSearch =
-      reportSearch.trim() === "" ||
-      rep.targetName?.toLowerCase().includes(reportSearch.toLowerCase()) ||
-      rep.reporterName?.toLowerCase().includes(reportSearch.toLowerCase()) ||
-      rep.reason.toLowerCase().includes(reportSearch.toLowerCase()) ||
-      rep.customExplanation?.toLowerCase().includes(reportSearch.toLowerCase());
-
-    return matchesFilter && matchesSearch;
+  // Filter Reports
+  const filteredReports = reports.filter((r) => {
+    if (reportFilter !== "all" && r.status !== reportFilter) return false;
+    if (reportSearch.trim()) {
+      const q = reportSearch.toLowerCase();
+      const matchReporter = r.reporterName?.toLowerCase().includes(q);
+      const matchTarget = r.targetName?.toLowerCase().includes(q);
+      const matchReason = r.reason?.toLowerCase().includes(q);
+      const matchExp = r.customExplanation?.toLowerCase().includes(q);
+      return matchReporter || matchTarget || matchReason || matchExp;
+    }
+    return true;
   });
 
   const bannedUsers = allUsers.filter((u) => u.isBanned);
-  const pendingReportsCount = reports.filter((r) => r.status === "pending").length;
 
   return (
     <div
-      id="admin-panel-backdrop"
+      id="admin-panel-modal-backdrop"
       className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
-        id="admin-panel-container"
-        className="w-full max-w-5xl bg-[#17212b] border border-[#2b3a4a] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[94vh] sm:h-[88vh] text-white"
+        id="admin-panel-modal-content"
+        className="w-full max-w-6xl bg-[#17212b] border border-[#2b3a4a] rounded-2xl shadow-2xl overflow-hidden text-white flex flex-col h-[94vh] max-h-[94vh]"
       >
-        {/* Header - Fully Responsive */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#242f3d] bg-[#0e1621] flex items-center justify-between gap-2">
-          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 flex items-center justify-center text-[#3390ec] shrink-0">
-              <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
+        {/* Top Master Header */}
+        <div className="px-4 sm:px-6 py-3.5 border-b border-[#242f3d] flex items-center justify-between bg-[#1f2c3a] shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 flex items-center justify-center text-[#3390ec]">
+              <ShieldCheck className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center space-x-1.5 sm:space-x-2 flex-wrap">
-                <h2 className="text-sm sm:text-base font-bold text-white tracking-wide truncate">
-                  MK Admin Panel 👑
+            <div>
+              <div className="flex items-center space-x-2">
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-wide">
+                  MK Wavegram Moderation & Justice Suite
                 </h2>
-                <span className="text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold uppercase tracking-wider shrink-0">
-                  Super Admin
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold uppercase tracking-wider border border-amber-500/30">
+                  Admin Authority
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-                <span>{currentUser.email || currentUser.username}</span>
-                <span className="text-slate-500 hidden sm:inline">• Full Moderation Access</span>
+              <p className="text-xs text-slate-400">
+                Logged in as <strong className="text-white">@{currentUser.username}</strong> ({currentUser.email})
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
-            {onOpenMKChannel && (
-              <button
-                id="admin-jump-channel-btn"
-                onClick={() => {
-                  onClose();
-                  onOpenMKChannel();
-                }}
-                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#3390ec]/15 border border-[#3390ec]/30 text-[#3390ec] hover:bg-[#3390ec]/25 text-xs font-semibold flex items-center space-x-1 transition cursor-pointer"
-                title="Open MK Official Channel"
-              >
-                <Radio className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">MK Channel ⚡</span>
-              </button>
-            )}
+          <div className="flex items-center space-x-2">
             <button
               id="admin-close-btn"
               onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
-              title="Close Admin Panel"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Security Unlock if Unauthorized */}
+        {/* PIN Authorization Screen if Required */}
         {!isAuthorized ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              <ShieldAlert className="w-8 h-8" />
-            </div>
-            <h3 className="text-lg font-bold text-white">Admin Authentication Required</h3>
-            <p className="text-xs text-slate-400 max-w-md">
-              Please enter your administrator passcode to access reports, member sanctions, and moderation controls.
-            </p>
-
-            <form onSubmit={handleAdminPinAuth} className="w-full max-w-sm space-y-3">
-              <div className="relative">
-                <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  value={adminPin}
-                  onChange={(e) => setAdminPin(e.target.value)}
-                  placeholder="Enter Admin Passcode (e.g. admin123)"
-                  className="w-full bg-[#0e1621] border border-[#242f3d] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3390ec]"
-                />
+          <div className="flex-1 flex items-center justify-center p-6 bg-[#17212b]">
+            <div className="w-full max-w-sm bg-[#0e1621] border border-[#242f3d] rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-2xl">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center mx-auto">
+                <KeyRound className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Admin Security Verification</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Enter your MK Master Admin Passcode (e.g. <code className="text-amber-300 font-mono">1234</code> or <code className="text-amber-300 font-mono">admin</code>) to unlock judicial authority.
+                </p>
               </div>
 
               {authError && (
-                <div className="text-xs text-red-400 bg-red-500/10 p-2.5 rounded-lg border border-red-500/30">
+                <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-semibold">
                   {authError}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={pinSubmitting || !adminPin.trim()}
-                className="w-full py-2.5 rounded-xl bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
-              >
-                {pinSubmitting ? "Authenticating..." : "Unlock Admin Controls"}
-              </button>
-            </form>
+              <form onSubmit={handleAdminPinAuth} className="space-y-3 pt-2">
+                <input
+                  type="password"
+                  value={adminPin}
+                  onChange={(e) => setAdminPin(e.target.value)}
+                  placeholder="Enter Admin PIN / Passcode..."
+                  className="w-full bg-[#17212b] border border-[#242f3d] rounded-xl px-4 py-2.5 text-center text-base tracking-widest text-white placeholder-slate-500 focus:outline-none focus:border-[#3390ec]"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={pinSubmitting || !adminPin.trim()}
+                  className="w-full py-2.5 rounded-xl bg-[#3390ec] hover:bg-[#2880db] text-white font-bold text-xs uppercase tracking-wider transition disabled:opacity-50 cursor-pointer shadow-lg shadow-[#3390ec]/20"
+                >
+                  {pinSubmitting ? "Authenticating..." : "Unlock Moderation Console"}
+                </button>
+              </form>
+            </div>
           </div>
         ) : (
           <>
-            {/* Horizontal Scrollable Tabs */}
-            <div className="px-3 sm:px-6 border-b border-[#242f3d] bg-[#1f2c3a] flex items-center justify-between overflow-x-auto no-scrollbar gap-2">
-              <div className="flex space-x-1 shrink-0">
+            {/* Primary Tab Navigation */}
+            <div className="px-4 sm:px-6 bg-[#0e1621] border-b border-[#242f3d] flex items-center justify-between overflow-x-auto no-scrollbar shrink-0">
+              <div className="flex space-x-1 sm:space-x-2">
                 <button
-                  onClick={() => {
-                    setActiveTab("reports");
-                  }}
+                  onClick={() => setActiveTab("reports")}
                   className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center space-x-1.5 sm:space-x-2 shrink-0 cursor-pointer ${
                     activeTab === "reports"
                       ? "border-[#3390ec] text-[#3390ec]"
@@ -528,11 +647,31 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 >
                   <ShieldAlert className="w-4 h-4" />
                   <span>Reports</span>
-                  {pendingReportsCount > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
-                      {pendingReportsCount}
+                  {reports.filter((r) => r.status === "pending").length > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-md bg-red-600 text-white text-[10px] font-bold animate-pulse">
+                      {reports.filter((r) => r.status === "pending").length}
                     </span>
                   )}
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (selectedReport) {
+                      handleOpenJudicialInvestigation(selectedReport);
+                    } else if (reports.length > 0) {
+                      handleOpenJudicialInvestigation(reports[0]);
+                    } else {
+                      setActiveTab("judicial");
+                    }
+                  }}
+                  className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center space-x-1.5 sm:space-x-2 shrink-0 cursor-pointer ${
+                    activeTab === "judicial"
+                      ? "border-amber-400 text-amber-400 bg-amber-500/10"
+                      : "border-transparent text-amber-300 hover:text-white"
+                  }`}
+                >
+                  <Scale className="w-4 h-4 text-amber-400" />
+                  <span>Judicial Investigation ⚖️</span>
                 </button>
 
                 <button
@@ -602,7 +741,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               {activeTab === "reports" && (
                 <div className="flex-1 flex overflow-hidden w-full">
                   {/* Left Column: Reports List */}
-                  {/* On mobile: Hidden if a report is selected. On desktop: always visible (w-5/12). */}
                   <div
                     className={`${
                       selectedReport ? "hidden md:flex" : "flex"
@@ -730,7 +868,6 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </div>
 
                   {/* Right Column: Report Detail & Actions */}
-                  {/* On mobile: Visible if report is selected. On desktop: always visible (w-7/12). */}
                   <div
                     className={`${
                       selectedReport ? "flex" : "hidden md:flex"
@@ -764,6 +901,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                           <div className="flex items-center space-x-1.5 shrink-0">
                             <button
+                              onClick={() => handleOpenJudicialInvestigation(selectedReport)}
+                              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-lg shadow-amber-500/20"
+                            >
+                              <Scale className="w-4 h-4" />
+                              <span>Inspect Chat & Judicial Room ⚖️</span>
+                            </button>
+
+                            <button
                               onClick={() => handleResolveReport(selectedReport.id, "resolved")}
                               className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center space-x-1 transition cursor-pointer shadow-md shadow-emerald-600/20"
                             >
@@ -778,6 +923,28 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               <span>Dismiss</span>
                             </button>
                           </div>
+                        </div>
+
+                        {/* Top Judicial Callout Card */}
+                        <div className="p-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-[#1f2c3a] to-amber-500/10 border border-amber-500/40 flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-amber-500/30 text-amber-300 flex items-center justify-center font-bold">
+                              <Gavel className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-amber-300">Live Judicial Investigation Available</div>
+                              <div className="text-[11px] text-slate-300">
+                                Enter the full conversation or group context, view messages live, and render a binding verdict.
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleOpenJudicialInvestigation(selectedReport)}
+                            className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black text-xs font-bold flex items-center space-x-1 transition cursor-pointer"
+                          >
+                            <span>Enter Case Room</span>
+                            <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
+                          </button>
                         </div>
 
                         {/* Report Information Summary */}
@@ -978,95 +1145,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                   <Ban className="w-3.5 h-3.5" />
                                   <span>Ban / Suspend</span>
                                 </button>
-
-                                <button
-                                  onClick={() => handleInspectUserActivity(selectedReport.targetDetails!.userId!)}
-                                  className="p-2.5 rounded-xl bg-purple-500/20 border border-purple-500/40 hover:bg-purple-500/30 text-purple-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition cursor-pointer"
-                                >
-                                  <Users className="w-3.5 h-3.5" />
-                                  <span>Inspect User</span>
-                                </button>
                               </>
-                            )}
-
-                            {selectedReport.targetType === "message" && selectedReport.targetId && (
-                              <button
-                                onClick={() => handleInspectMessageContext(selectedReport.targetId)}
-                                className="p-2.5 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 hover:bg-[#3390ec]/30 text-[#3390ec] text-xs font-bold flex items-center justify-center space-x-1.5 transition cursor-pointer"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5" />
-                                <span>Inspect Context</span>
-                              </button>
                             )}
                           </div>
                         </div>
-
-                        {/* Surrounding Context Inspector Display */}
-                        {inspectedMessageContext && (
-                          <div className="bg-[#0e1621] border border-cyan-500/40 rounded-xl p-3.5 space-y-2 animate-in fade-in">
-                            <div className="flex items-center justify-between text-xs text-cyan-300 font-bold">
-                              <span>Chat Context Inspector</span>
-                              <button
-                                onClick={() => setInspectedMessageContext(null)}
-                                className="text-slate-400 hover:text-white"
-                              >
-                                Close
-                              </button>
-                            </div>
-                            <div className="space-y-1.5 max-h-48 overflow-y-auto divide-y divide-[#1f2c3a] text-xs">
-                              {inspectedMessageContext.contextMessages.map((m) => (
-                                <div
-                                  key={m.id}
-                                  className={`p-2 rounded ${
-                                    m.id === selectedReport.targetId ? "bg-red-500/20 border border-red-500/40" : ""
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                    <span className="font-semibold text-slate-200">{m.senderName}</span>
-                                    <span>{formatEnglishDate(m.createdAt)}</span>
-                                  </div>
-                                  <div className="text-slate-200 mt-0.5">{m.text}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* User Activity Inspector Display */}
-                        {inspectedUserActivity && (
-                          <div className="bg-[#0e1621] border border-purple-500/40 rounded-xl p-3.5 space-y-2.5 animate-in fade-in text-xs">
-                            <div className="flex items-center justify-between text-xs text-purple-300 font-bold">
-                              <span>Profile Activity: @{inspectedUserActivity.user.username}</span>
-                              <button
-                                onClick={() => setInspectedUserActivity(null)}
-                                className="text-slate-400 hover:text-white"
-                              >
-                                Close
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2 text-center">
-                              <div className="p-2 bg-[#17212b] rounded-lg border border-[#242f3d]">
-                                <div className="text-sm font-bold text-white">{inspectedUserActivity.totalMessages}</div>
-                                <div className="text-[10px] text-slate-400">Total Messages</div>
-                              </div>
-                              <div className="p-2 bg-[#17212b] rounded-lg border border-[#242f3d]">
-                                <div className="text-sm font-bold text-white">{inspectedUserActivity.storiesCount}</div>
-                                <div className="text-[10px] text-slate-400">Stories Posted</div>
-                              </div>
-                              <div className="p-2 bg-[#17212b] rounded-lg border border-[#242f3d]">
-                                <div className="text-sm font-bold text-red-400">{inspectedUserActivity.reportsAgainst.length}</div>
-                                <div className="text-[10px] text-slate-400">Reports Against</div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
                       </>
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 py-16">
                         <Info className="w-8 h-8 opacity-40" />
                         <span className="text-xs text-center max-w-xs text-slate-400">
-                          Select a report from the list on the left to review details, respond to the reporter, and enforce moderation actions.
+                          Select a report from the list on the left to review details, inspect the full live conversation, respond to the reporter, and enforce moderation sanctions.
                         </span>
                       </div>
                     )}
@@ -1074,7 +1162,375 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
               )}
 
-              {/* TAB 2: ACTIVE BANS */}
+              {/* TAB 2: JUDICIAL LIVE INVESTIGATION ROOM & DECISION SUITE */}
+              {activeTab === "judicial" && (
+                <div className="flex-1 flex flex-col overflow-hidden w-full bg-[#101921]">
+                  {loadingJudicial ? (
+                    <div className="flex-1 flex flex-col items-center justify-center space-y-3 p-8">
+                      <div className="w-10 h-10 border-3 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
+                      <div className="text-sm font-bold text-white">Opening Judicial Case & Live Discussion Log...</div>
+                      <p className="text-xs text-slate-400">Gathering chat history, user standing, and evidence</p>
+                    </div>
+                  ) : !judicialCase ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+                      <Scale className="w-12 h-12 text-amber-400/60" />
+                      <h3 className="text-base font-bold text-white">No Active Judicial Investigation Selected</h3>
+                      <p className="text-xs text-slate-400 max-w-md">
+                        Please select a report from the Reports tab or choose a conversation to enter Judicial Investigation mode.
+                      </p>
+                      <button
+                        onClick={() => setActiveTab("reports")}
+                        className="px-4 py-2 rounded-xl bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold transition cursor-pointer"
+                      >
+                        Return to Reports
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                      {/* Left/Main Column: Real-Time Chat & Discussion Transcript */}
+                      <div className="flex-1 flex flex-col h-full border-r border-[#242f3d] bg-[#0e1621] overflow-hidden">
+                        {/* Investigation Case Header */}
+                        <div className="p-3.5 bg-[#17212b] border-b border-[#242f3d] flex items-center justify-between flex-wrap gap-2 shrink-0">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold">
+                              <Gavel className="w-4.5 h-4.5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs font-bold text-white">
+                                  {judicialCase.conversation?.name ||
+                                    judicialCase.group?.name ||
+                                    (judicialCase.reporter && judicialCase.targetUser
+                                      ? `Discussion: @${judicialCase.reporter.username} ↔ @${judicialCase.targetUser.username}`
+                                      : "Live Discussion Transcript")}
+                                </span>
+                                <span className="text-[10px] px-2 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                                  {judicialCase.messages.length} Messages
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                                <span>Reporter: <strong className="text-slate-200">@{judicialCase.reporter?.username || selectedReport?.reporterName || "User"}</strong></span>
+                                <span>•</span>
+                                <span>Subject: <strong className="text-red-400">@{judicialCase.targetUser?.username || selectedReport?.targetName || "Offender"}</strong></span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            {/* Search within transcript */}
+                            <div className="relative w-40 sm:w-48">
+                              <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                              <input
+                                type="text"
+                                value={judicialSearch}
+                                onChange={(e) => setJudicialSearch(e.target.value)}
+                                placeholder="Search messages..."
+                                className="w-full bg-[#0e1621] border border-[#242f3d] rounded-lg pl-7 pr-2 py-1 text-[11px] text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                              />
+                            </div>
+
+                            <button
+                              onClick={() => selectedReport && handleOpenJudicialInvestigation(selectedReport)}
+                              className="p-1.5 rounded-lg bg-[#242f3d] hover:bg-[#2e3c4e] text-slate-300 hover:text-white transition text-xs"
+                              title="Refresh Chat Feed"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Transcript Feed Messages */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0e1621]">
+                          {judicialCase.messages.length === 0 ? (
+                            <div className="p-12 text-center text-slate-500 text-xs">
+                              No messages found in this conversation thread.
+                            </div>
+                          ) : (
+                            judicialCase.messages
+                              .filter((m) => {
+                                if (!judicialSearch.trim()) return true;
+                                const q = judicialSearch.toLowerCase();
+                                return (
+                                  m.text?.toLowerCase().includes(q) ||
+                                  m.senderName?.toLowerCase().includes(q)
+                                );
+                              })
+                              .map((msg) => {
+                                const isFlagged =
+                                  msg.id === judicialCase.flaggedMessageId ||
+                                  (selectedReport && selectedReport.targetId === msg.id);
+                                const isReporter = msg.senderId === judicialCase.reporter?.id;
+                                const isTarget = msg.senderId === judicialCase.targetUser?.id;
+
+                                return (
+                                  <div
+                                    key={msg.id}
+                                    id={`judicial-msg-${msg.id}`}
+                                    className={`p-3 rounded-2xl border transition ${
+                                      isFlagged
+                                        ? "bg-red-950/40 border-red-500 shadow-lg shadow-red-950/50 ring-2 ring-red-500/40"
+                                        : isTarget
+                                        ? "bg-[#17212b] border-purple-500/30"
+                                        : isReporter
+                                        ? "bg-[#1f2c3a] border-[#3390ec]/30"
+                                        : "bg-[#17212b] border-[#242f3d]"
+                                    }`}
+                                  >
+                                    {/* Sender & Badge Header */}
+                                    <div className="flex items-center justify-between pb-1.5 border-b border-white/5 text-xs">
+                                      <div className="flex items-center space-x-2">
+                                        <div className="w-5 h-5 rounded-full overflow-hidden bg-slate-700 shrink-0">
+                                          {msg.senderAvatar ? (
+                                            <img src={msg.senderAvatar} alt="" className="w-full h-full object-cover" />
+                                          ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-[10px] text-white font-bold">
+                                              {msg.senderName?.[0] || "?"}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <span className="font-bold text-white text-xs">{msg.senderName}</span>
+                                        {isTarget && (
+                                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-semibold uppercase">
+                                            Reported Subject
+                                          </span>
+                                        )}
+                                        {isReporter && (
+                                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 font-semibold uppercase">
+                                            Reporter
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                                        <span>{formatEnglishDate(msg.createdAt)}</span>
+                                        {isFlagged && (
+                                          <span className="px-2 py-0.5 rounded-full bg-red-600 text-white font-bold text-[10px] uppercase tracking-wider animate-pulse flex items-center gap-1">
+                                            <AlertTriangle className="w-3 h-3" />
+                                            Flagged Violation
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Message Body Content */}
+                                    <div className="pt-2 text-xs sm:text-sm text-slate-100 whitespace-pre-wrap leading-relaxed">
+                                      {msg.text || (
+                                        <span className="italic text-slate-400">[Attachment: {msg.type || "Media"}]</span>
+                                      )}
+                                      {msg.mediaUrl && (
+                                        <div className="mt-2 max-w-xs rounded-lg overflow-hidden border border-white/10">
+                                          {msg.type === "photo" ? (
+                                            <img src={msg.mediaUrl} alt="Attached Evidence" className="w-full h-auto max-h-48 object-cover" />
+                                          ) : msg.type === "audio" ? (
+                                            <audio src={msg.mediaUrl} controls className="w-full mt-1" />
+                                          ) : null}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Judicial Message Actions Bar */}
+                                    <div className="mt-2.5 pt-1.5 border-t border-white/5 flex items-center justify-between text-[11px]">
+                                      <span className="text-slate-500 font-mono text-[10px]">ID: {msg.id}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteMessageInJudicial(msg.id)}
+                                        className="px-2.5 py-1 rounded-lg bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white transition font-bold flex items-center space-x-1 cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                        <span>Delete / Redact Message</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right Column: Judicial Verdict & Decision Suite */}
+                      <div className="w-full md:w-5/12 bg-[#17212b] p-4 sm:p-5 overflow-y-auto flex flex-col space-y-4">
+                        <div className="border-b border-[#242f3d] pb-3 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold">
+                              <Scale className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h3 className="text-sm font-bold text-white">Judicial Verdict & Sanctions</h3>
+                              <p className="text-[11px] text-slate-400">Review evidence and deliver binding resolution</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {verdictSuccessMessage && (
+                          <div className="p-3.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-bold flex items-start space-x-2">
+                            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span>{verdictSuccessMessage}</span>
+                          </div>
+                        )}
+
+                        {/* Subject Standing Dossier */}
+                        <div className="bg-[#0e1621] border border-[#242f3d] rounded-xl p-3 space-y-2 text-xs">
+                          <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                            Target Subject Standing
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-700">
+                                {judicialCase.targetUser?.avatar && (
+                                  <img src={judicialCase.targetUser.avatar} alt="" className="w-full h-full object-cover" />
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-bold text-white">@{judicialCase.targetUser?.username || selectedReport?.targetName || "Subject"}</div>
+                                <div className="text-[10px] text-slate-400">{judicialCase.targetUser?.email || "User Account"}</div>
+                              </div>
+                            </div>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                judicialCase.targetUser?.isBanned
+                                  ? "bg-red-600 text-white"
+                                  : "bg-emerald-500/20 text-emerald-300"
+                              }`}
+                            >
+                              {judicialCase.targetUser?.isBanned ? "Suspended" : "Active"}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 pt-1 text-center text-[11px]">
+                            <div className="p-1.5 bg-[#17212b] rounded-lg border border-[#242f3d]">
+                              <span className="text-amber-400 font-bold block">{judicialCase.targetUser?.warnings?.length || 0}</span>
+                              <span className="text-slate-400 text-[10px]">Past Warnings</span>
+                            </div>
+                            <div className="p-1.5 bg-[#17212b] rounded-lg border border-[#242f3d]">
+                              <span className="text-red-400 font-bold block">{judicialCase.targetUser?.reportsAgainstCount || 1}</span>
+                              <span className="text-slate-400 text-[10px]">Total Complaints</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Complaint Overview */}
+                        <div className="bg-[#0e1621] border border-red-500/30 rounded-xl p-3 space-y-1.5 text-xs">
+                          <div className="text-[10px] uppercase font-bold text-red-400 tracking-wider flex items-center justify-between">
+                            <span>Reported Violation:</span>
+                            <span className="text-slate-400 font-normal">{formatEnglishDate(selectedReport?.createdAt)}</span>
+                          </div>
+                          <div className="font-bold text-white">{selectedReport?.reason || "Policy Violation"}</div>
+                          {selectedReport?.customExplanation && (
+                            <div className="text-slate-300 italic bg-[#17212b] p-2 rounded-lg border border-[#242f3d] text-[11px]">
+                              "{selectedReport.customExplanation}"
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Verdict Form */}
+                        <form onSubmit={handleDeliverJudicialVerdict} className="space-y-3.5 text-xs">
+                          {/* 1. Sanction Choice */}
+                          <div>
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+                              1. Select Disciplinary Action on Subject:
+                            </label>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {[
+                                { id: "none", label: "Dismiss (No Sanction)" },
+                                { id: "warn", label: "Formal Disciplinary Warning" },
+                                { id: "ban_3d", label: "Suspend 3 Days" },
+                                { id: "ban_7d", label: "Suspend 7 Days" },
+                                { id: "ban_30d", label: "Suspend 30 Days" },
+                                { id: "ban_permanent", label: "Permanent Account Ban" }
+                              ].map((opt) => (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setVerdictSanction(opt.id as any);
+                                    if (opt.id === "none") {
+                                      setVerdictReplyToReporter("Our moderation team has investigated the chat transcript and found no policy violation.");
+                                      setVerdictActionSummary("Report Dismissed (No Violation)");
+                                    } else if (opt.id === "warn") {
+                                      setVerdictReplyToReporter("Thank you for reporting. The offending message was removed and a formal warning was issued to the user.");
+                                      setVerdictActionSummary("Formal Warning Issued");
+                                    } else if (opt.id === "ban_7d") {
+                                      setVerdictReplyToReporter("Your report was validated. The offending user has been suspended for 7 days.");
+                                      setVerdictActionSummary("7-Day Suspension Enforced");
+                                    } else if (opt.id === "ban_permanent") {
+                                      setVerdictReplyToReporter("Severe violations were confirmed upon judicial review. The offending account was permanently banned.");
+                                      setVerdictActionSummary("Permanent Account Ban");
+                                    }
+                                  }}
+                                  className={`p-2 rounded-xl text-left border transition text-[11px] font-semibold cursor-pointer ${
+                                    verdictSanction === opt.id
+                                      ? "bg-amber-500/20 border-amber-400 text-amber-300 shadow-md shadow-amber-500/20"
+                                      : "bg-[#0e1621] border-[#242f3d] text-slate-300 hover:bg-[#1f2c3a]"
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* 2. Sanction Note */}
+                          <div>
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                              2. Sanction Justification Note:
+                            </label>
+                            <input
+                              type="text"
+                              value={verdictReason}
+                              onChange={(e) => setVerdictReason(e.target.value)}
+                              placeholder="e.g. Violation of community safety guidelines regarding harassment."
+                              className="w-full bg-[#0e1621] border border-[#242f3d] rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                            />
+                          </div>
+
+                          {/* 3. Official Feedback to Reporter */}
+                          <div>
+                            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1">
+                              3. Official Verdict Notification to @{selectedReport?.reporterName}:
+                            </label>
+                            <textarea
+                              value={verdictReplyToReporter}
+                              onChange={(e) => setVerdictReplyToReporter(e.target.value)}
+                              placeholder="Type the official message the reporter will receive..."
+                              rows={3}
+                              className="w-full bg-[#0e1621] border border-[#242f3d] rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 resize-none"
+                            />
+                          </div>
+
+                          {/* 4. Redaction Checkbox */}
+                          {judicialCase.flaggedMessageId && (
+                            <label className="flex items-center space-x-2 bg-[#0e1621] p-2.5 rounded-xl border border-[#242f3d] cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={verdictDeleteMessage}
+                                onChange={(e) => setVerdictDeleteMessage(e.target.checked)}
+                                className="w-4 h-4 rounded text-amber-500 bg-[#17212b] border-[#242f3d] focus:ring-amber-400"
+                              />
+                              <span className="text-xs text-slate-200">
+                                Automatically delete and redact the flagged message from the conversation.
+                              </span>
+                            </label>
+                          )}
+
+                          {/* 5. Submit Verdict Button */}
+                          <div className="pt-2">
+                            <button
+                              type="submit"
+                              disabled={verdictSubmitting}
+                              className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center space-x-2 shadow-xl shadow-amber-500/25 transition disabled:opacity-50 cursor-pointer"
+                            >
+                              <Gavel className="w-4 h-4" />
+                              <span>{verdictSubmitting ? "Delivering Verdict..." : "⚖️ Deliver Final Verdict & Close Case"}</span>
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: ACTIVE BANS */}
               {activeTab === "bans" && (
                 <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1157,7 +1613,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
               )}
 
-              {/* TAB 3: BROADCAST STUDIO */}
+              {/* TAB 4: BROADCAST STUDIO */}
               {activeTab === "broadcast" && (
                 <div className="flex-1 p-4 sm:p-8 overflow-y-auto max-w-2xl mx-auto space-y-6">
                   <div className="border-b border-[#242f3d] pb-4 flex items-start justify-between flex-wrap gap-2">
@@ -1256,7 +1712,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
               )}
 
-              {/* TAB 4: USERS DIRECTORY */}
+              {/* TAB 5: USERS DIRECTORY */}
               {activeTab === "users" && (
                 <div className="flex-1 p-4 sm:p-6 overflow-hidden flex flex-col space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-2">

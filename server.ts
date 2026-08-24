@@ -4131,6 +4131,275 @@ app.get("/api/admin/messages/context/:messageId", (req: Request, res: Response) 
   });
 });
 
+// 9b. Admin Judicial Live Chat & Group Investigation Suite
+app.get("/api/admin/judicial/inspect-chat", (req: Request, res: Response) => {
+  const adminId = (req.query.adminId as string || "").trim();
+  const admin = checkAdminAccess(adminId);
+  if (!admin) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const reportId = req.query.reportId as string;
+  let convId = req.query.conversationId as string;
+  let reporterUserId = req.query.reporterId as string;
+  let targetUserId = req.query.targetUserId as string;
+  let groupId = req.query.groupId as string;
+  let flaggedMessageId: string | null = null;
+
+  let report = null;
+  if (reportId) {
+    report = (store.reports || []).find((r) => r.id === reportId);
+    if (report) {
+      reporterUserId = reporterUserId || report.reporterId;
+      targetUserId = targetUserId || report.targetDetails?.userId || (report.targetType === "user" ? report.targetId : "");
+      groupId = groupId || report.targetDetails?.groupId || (report.targetType === "group" ? report.targetId : "");
+      convId = convId || report.targetDetails?.conversationId;
+      if (report.targetType === "message") {
+        flaggedMessageId = report.targetId;
+      }
+    }
+  }
+
+  // If we have a flagged message, determine its conversation if not specified
+  if (flaggedMessageId && !convId) {
+    const msg = store.messages.find((m) => m.id === flaggedMessageId);
+    if (msg) convId = msg.conversationId;
+  }
+
+  let conversation = null;
+  let group = null;
+
+  // 1. Try finding conversation directly by convId
+  if (convId) {
+    conversation = store.conversations.find((c) => c.id === convId);
+    if (conversation?.groupId) {
+      group = store.groups.find((g) => g.id === conversation.groupId);
+    }
+  }
+
+  // 2. If groupId is provided, find group conversation
+  if (!conversation && groupId) {
+    group = store.groups.find((g) => g.id === groupId);
+    conversation = store.conversations.find((c) => c.groupId === groupId || (c.type === 'group' && c.id === `group_${groupId}`));
+  }
+
+  // 3. If direct users are provided, find DM conversation between them
+  if (!conversation && reporterUserId && targetUserId) {
+    conversation = store.conversations.find(
+      (c) =>
+        c.type === 'dm' &&
+        c.participants.includes(reporterUserId) &&
+        c.participants.includes(targetUserId)
+    );
+  }
+
+  // 4. If targetUserId alone is provided, find any conversation involving target
+  if (!conversation && targetUserId) {
+    conversation = store.conversations.find((c) => c.participants.includes(targetUserId));
+  }
+
+  const effectiveConvId = conversation?.id || convId || (group ? `conv_${group.id}` : undefined);
+  let messages: Message[] = [];
+
+  if (effectiveConvId) {
+    messages = store.messages.filter((m) => m.conversationId === effectiveConvId);
+  } else if (reporterUserId && targetUserId) {
+    // Collect messages exchanged directly between these two user IDs
+    messages = store.messages.filter(
+      (m) =>
+        (m.senderId === reporterUserId || m.senderId === targetUserId)
+    );
+  }
+
+  // Reporter & Target User Detailed Profiles
+  const reporter = reporterUserId ? store.users.find((u) => u.id === reporterUserId) : null;
+  const targetUser = targetUserId ? store.users.find((u) => u.id === targetUserId) : null;
+
+  // Resolve participants in conversation
+  const participantUsers = (conversation?.participants || (group?.memberIds || []))
+    .map((pId) => store.users.find((u) => u.id === pId))
+    .filter(Boolean);
+
+  return res.json({
+    success: true,
+    report,
+    conversation: conversation || (group ? {
+      id: effectiveConvId || group.id,
+      name: group.name,
+      avatar: group.avatar,
+      isGroup: true,
+      groupId: group.id,
+      participants: group.memberIds
+    } : null),
+    group,
+    messages: messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    flaggedMessageId,
+    reporter: reporter ? {
+      id: reporter.id,
+      username: reporter.username,
+      email: reporter.email,
+      avatar: reporter.avatar,
+      createdAt: reporter.createdAt,
+      status: reporter.status,
+      warningsCount: reporter.warnings?.length || 0,
+      reportsFiledCount: (store.reports || []).filter((r) => r.reporterId === reporter.id).length
+    } : null,
+    targetUser: targetUser ? {
+      id: targetUser.id,
+      username: targetUser.username,
+      email: targetUser.email,
+      avatar: targetUser.avatar,
+      createdAt: targetUser.createdAt,
+      status: targetUser.status,
+      isBanned: !!targetUser.isBanned,
+      bannedUntil: targetUser.bannedUntil,
+      banReason: targetUser.banReason,
+      warnings: targetUser.warnings || [],
+      reportsAgainstCount: (store.reports || []).filter((r) => r.targetId === targetUser.id || r.targetDetails?.userId === targetUser.id).length
+    } : null,
+    participants: participantUsers
+  });
+});
+
+// 9c. Admin: Judicial Redaction / Delete Violating Message from Chat
+app.post("/api/admin/judicial/delete-message", (req: Request, res: Response) => {
+  const { adminId, messageId, reason } = req.body;
+  const admin = checkAdminAccess(adminId);
+  if (!admin) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const msgIdx = store.messages.findIndex((m) => m.id === messageId);
+  if (msgIdx === -1) {
+    return res.status(404).json({ error: "Message not found." });
+  }
+
+  const removedMsg = store.messages[msgIdx];
+  const conversationId = removedMsg.conversationId;
+  store.messages.splice(msgIdx, 1);
+
+  // Add a clear judicial moderation audit note in chat if conversation exists
+  const auditMsg: Message = {
+    id: "msg_audit_" + Math.random().toString(36).substring(2, 10),
+    conversationId,
+    senderId: admin.id,
+    senderName: "MK Safety & Moderation 🛡️",
+    senderAvatar: admin.avatar,
+    text: `🛡️ *A message violating platform community guidelines was removed by Platform Moderation.* (${reason || "Violating Content"})`,
+    type: "text",
+    reactions: {},
+    likes: [],
+    isSystem: true,
+    createdAt: new Date().toISOString()
+  };
+  store.messages.push(auditMsg);
+
+  saveStore();
+
+  broadcastEvent("message_deleted", { messageId, conversationId });
+  broadcastEvent("new_message", auditMsg);
+
+  return res.json({ success: true, removedMessageId: messageId, auditMessage: auditMsg });
+});
+
+// 9d. Admin: Comprehensive Judicial Verdict & Resolution Suite
+app.post("/api/admin/judicial/verdict", (req: Request, res: Response) => {
+  const {
+    adminId,
+    reportId,
+    targetUserId,
+    sanction = "none",
+    sanctionReason = "",
+    replyToReporter = "",
+    actionSummary = "",
+    deleteFlaggedMessage = false,
+    flaggedMessageId = null
+  } = req.body;
+
+  const admin = checkAdminAccess(adminId);
+  if (!admin) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const rep = (store.reports || []).find((r) => r.id === reportId);
+  const targetUser = targetUserId ? store.users.find((u) => u.id === targetUserId) : null;
+
+  // 1. Handle Prohibited Message Removal if requested
+  if (deleteFlaggedMessage && flaggedMessageId) {
+    const msgIdx = store.messages.findIndex((m) => m.id === flaggedMessageId);
+    if (msgIdx !== -1) {
+      const removedMsg = store.messages[msgIdx];
+      store.messages.splice(msgIdx, 1);
+      broadcastEvent("message_deleted", { messageId: flaggedMessageId, conversationId: removedMsg.conversationId });
+    }
+  }
+
+  // 2. Handle Target User Sanction
+  if (targetUser && !isUserAdmin(targetUser)) {
+    if (sanction === "warn") {
+      if (!targetUser.warnings) targetUser.warnings = [];
+      const warning = {
+        id: "warn_" + Math.random().toString(36).substring(2, 10),
+        reason: sanctionReason || "Official Disciplinary Warning from MK Wavegram Moderation.",
+        date: new Date().toISOString(),
+        adminId: admin.id
+      };
+      targetUser.warnings.push(warning);
+      broadcastEvent("user_warning", { userId: targetUser.id, warning }, [targetUser.id]);
+      broadcastEvent("user_updated", targetUser);
+    } else if (sanction.startsWith("ban_")) {
+      const now = Date.now();
+      let bannedUntil = "permanent";
+      if (sanction === "ban_3d") bannedUntil = new Date(now + 3 * 24 * 3600 * 1000).toISOString();
+      else if (sanction === "ban_7d") bannedUntil = new Date(now + 7 * 24 * 3600 * 1000).toISOString();
+      else if (sanction === "ban_10d") bannedUntil = new Date(now + 10 * 24 * 3600 * 1000).toISOString();
+      else if (sanction === "ban_30d") bannedUntil = new Date(now + 30 * 24 * 3600 * 1000).toISOString();
+
+      targetUser.isBanned = true;
+      targetUser.bannedUntil = bannedUntil;
+      targetUser.banReason = sanctionReason || "Severe violation of MK Wavegram safety and community standards.";
+      targetUser.bannedAt = new Date().toISOString();
+      targetUser.status = "offline";
+
+      broadcastEvent("user_banned", {
+        userId: targetUser.id,
+        bannedUntil,
+        banReason: targetUser.banReason,
+        bannedAt: targetUser.bannedAt
+      });
+      broadcastEvent("user_updated", targetUser);
+    }
+  }
+
+  // 3. Resolve & Reply to Report
+  if (rep) {
+    rep.status = sanction === "none" && !deleteFlaggedMessage ? "dismissed" : "resolved";
+    rep.adminReply = replyToReporter || "Your report has been thoroughly investigated in full context by our administration and resolved.";
+    rep.adminReplyAt = new Date().toISOString();
+    rep.actionTaken = actionSummary || (sanction !== "none" ? `Sanction Applied: ${sanction}` : "Report Processed & Closed");
+    rep.updatedAt = new Date().toISOString();
+
+    broadcastEvent("report_updated", rep);
+    broadcastEvent("report_replied", {
+      reportId: rep.id,
+      reporterId: rep.reporterId,
+      adminReply: rep.adminReply,
+      actionTaken: rep.actionTaken,
+      status: rep.status,
+      createdAt: rep.adminReplyAt
+    }, [rep.reporterId]);
+  }
+
+  saveStore();
+
+  return res.json({
+    success: true,
+    report: rep,
+    targetUser,
+    actionSummary: rep?.actionTaken
+  });
+});
+
 // 10. Admin: Push official broadcast notification to MK Official Channel
 app.post("/api/admin/broadcast", (req: Request, res: Response) => {
   const { adminId, title, message, priority = "high" } = req.body;
