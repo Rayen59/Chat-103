@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import { User, Message, Group, Conversation, ActiveCall, UserAnalytics, ChatRequest, Story, StoryComment, StoryAnonymousAnswer, Note, NoteMusic } from "./src/types";
+import { User, Message, Group, Conversation, ActiveCall, UserAnalytics, ChatRequest, Story, StoryComment, StoryAnonymousAnswer, Note, NoteMusic, UserReport } from "./src/types";
 
 const app = express();
 const PORT = 3000;
@@ -24,6 +24,21 @@ function getGeminiClient(): GoogleGenAI | null {
   }
   return aiClient;
 }
+
+export const ADMIN_USER: User = {
+  id: "user_admin_mk",
+  email: "addmmin@gmail.com",
+  username: "MK Admin 👑",
+  avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=MKAdminMasterHQ&backgroundColor=3390ec,0e1621",
+  bio: "Official System Administrator & Platform Overseer of MK Wavegram.",
+  status: "online",
+  role: "admin",
+  createdAt: "2025-01-01T00:00:00.000Z",
+  badges: ["Admin Panel", "System Overseer", "Verified"],
+  hasAccount: true,
+  acceptedPrivacyTerms: true,
+  privacyAcceptedAt: "2025-01-01T00:00:00.000Z"
+};
 
 export const MK_AI_USER: User = {
   id: "user_mk_ia",
@@ -56,6 +71,7 @@ interface DataStore {
   chatRequests: ChatRequest[];
   stories: Story[];
   notes: Note[];
+  reports: UserReport[];
 }
 
 let store: DataStore = {
@@ -66,8 +82,114 @@ let store: DataStore = {
   passwords: {},
   chatRequests: [],
   stories: [],
-  notes: []
+  notes: [],
+  reports: []
 };
+
+function ensureOfficialEntities() {
+  // Ensure Admin User exists and is configured
+  const existingAdminIdx = store.users.findIndex((u) => u.email.toLowerCase() === "addmmin@gmail.com");
+  if (existingAdminIdx === -1) {
+    store.users.unshift(ADMIN_USER);
+  } else {
+    store.users[existingAdminIdx].role = "admin";
+    store.users[existingAdminIdx].badges = ["Admin Panel", "System Overseer", "Verified"];
+    store.users[existingAdminIdx].isBanned = false;
+  }
+  store.passwords["addmmin@gmail.com"] = "adminadmin12";
+
+  // Ensure MK.ia AI exists
+  if (!store.users.some((u) => u.id === MK_AI_USER.id)) {
+    store.users.push(MK_AI_USER);
+  }
+
+  // Ensure all users have hasAccount
+  store.users.forEach((u) => {
+    if (u.hasAccount === undefined) u.hasAccount = true;
+    if (u.acceptedPrivacyTerms === undefined) u.acceptedPrivacyTerms = true;
+  });
+
+  const allUserIds = store.users.map((u) => u.id);
+
+  // Ensure Official Group
+  let officialGroup = store.groups.find((g) => g.id === "group_mk_official");
+  if (!officialGroup) {
+    officialGroup = {
+      id: "group_mk_official",
+      name: "MK Official ⚡",
+      description: "Official MK Wavegram Announcement & News Channel. Pinned for all users.",
+      avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=MKOfficialChannel&backgroundColor=3390ec,0e1621",
+      creatorId: "user_admin_mk",
+      adminIds: ["user_admin_mk"],
+      memberIds: allUserIds,
+      isPrivate: false,
+      announcementMode: true,
+      inviteCode: "MK-OFFICIAL-2026",
+      themeColor: "#3390ec",
+      badges: [{ userId: "user_admin_mk", badgeName: "Owner / Admin", color: "#3390ec" }],
+      createdAt: "2025-01-01T00:00:00.000Z"
+    };
+    store.groups.unshift(officialGroup);
+  } else {
+    officialGroup.name = "MK Official ⚡";
+    officialGroup.announcementMode = true;
+    officialGroup.creatorId = "user_admin_mk";
+    if (!officialGroup.adminIds.includes("user_admin_mk")) {
+      officialGroup.adminIds.push("user_admin_mk");
+    }
+    // Add any missing users to the official group
+    allUserIds.forEach((uid) => {
+      if (!officialGroup!.memberIds.includes(uid)) {
+        officialGroup!.memberIds.push(uid);
+      }
+    });
+  }
+
+  // Ensure Official Conversation
+  let officialConv = store.conversations.find((c) => c.id === "conv_mk_official");
+  if (!officialConv) {
+    officialConv = {
+      id: "conv_mk_official",
+      type: "group",
+      participants: allUserIds,
+      groupId: "group_mk_official",
+      isOfficialChannel: true,
+      lastMessage: {
+        text: "⚡ Welcome to MK Wavegram! Stay tuned for official announcements and security updates.",
+        senderId: "user_admin_mk",
+        senderName: "MK Admin",
+        createdAt: new Date().toISOString()
+      },
+      updatedAt: new Date().toISOString()
+    };
+    store.conversations.unshift(officialConv);
+  } else {
+    officialConv.isOfficialChannel = true;
+    officialConv.groupId = "group_mk_official";
+    allUserIds.forEach((uid) => {
+      if (!officialConv!.participants.includes(uid)) {
+        officialConv!.participants.push(uid);
+      }
+    });
+  }
+
+  // Ensure welcome message in official channel
+  if (!store.messages.some((m) => m.conversationId === "conv_mk_official")) {
+    const welcomeMsg: Message = {
+      id: "msg_mk_welcome_1",
+      conversationId: "conv_mk_official",
+      senderId: "user_admin_mk",
+      senderName: "MK Admin 👑",
+      senderAvatar: ADMIN_USER.avatar,
+      text: "⚡ **Welcome to MK Wavegram!**\n\nThis is the official announcement channel. All major platform security patches, AI feature updates, and notices will be broadcast here.\n\n🛡️ *Security tip*: MK Wavegram includes native end-to-end moderation, personal notes studio, 24h stories, and real-time AI capabilities.",
+      type: "text",
+      reactions: { "⚡": ["user_admin_mk"], "🚀": ["user_alex"] },
+      likes: [],
+      createdAt: new Date().toISOString()
+    };
+    store.messages.unshift(welcomeMsg);
+  }
+}
 
 function loadStore() {
   try {
@@ -76,20 +198,15 @@ function loadStore() {
       store = JSON.parse(data);
       if (!store.chatRequests) store.chatRequests = [];
       if (!store.notes) store.notes = [];
+      if (!store.reports) store.reports = [];
       if (!store.stories || store.stories.length === 0) {
         seedInitialStories();
       }
-      if (!store.users.some((u) => u.id === WIA_AI_USER.id)) {
-        store.users.push(WIA_AI_USER);
-      }
-      // Ensure all users have hasAccount set
-      store.users.forEach((u) => {
-        if (u.hasAccount === undefined) u.hasAccount = true;
-        if (u.acceptedPrivacyTerms === undefined) u.acceptedPrivacyTerms = true;
-      });
+      ensureOfficialEntities();
       if (store.notes.length === 0) {
         seedInitialNotes();
       }
+      saveStore();
     } else {
       seedInitialData();
     }
@@ -608,7 +725,7 @@ app.get("/api/events", (req: Request, res: Response) => {
   });
 });
 
-// 2. Auth: Register (enforce unique email)
+// 2. Auth: Register (enforce unique email & admin reservation)
 app.post("/api/auth/register", (req: Request, res: Response) => {
   const { email, username, password, avatar, bio } = req.body;
 
@@ -617,6 +734,11 @@ app.post("/api/auth/register", (req: Request, res: Response) => {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+
+  // Enforce reservation of admin credentials
+  if (normalizedEmail === "addmmin@gmail.com") {
+    return res.status(403).json({ error: "The email addmmin@gmail.com is exclusively reserved for the Administrator." });
+  }
 
   // Enforce single-use email check
   const existingUser = store.users.find((u) => u.email.toLowerCase() === normalizedEmail);
@@ -635,12 +757,27 @@ app.post("/api/auth/register", (req: Request, res: Response) => {
     avatar: defaultAvatar,
     bio: bio || "Hey there! I am using Wavegram.",
     status: "online",
+    role: "user",
     createdAt: new Date().toISOString(),
-    badges: ["Member"]
+    badges: ["Member"],
+    hasAccount: true,
+    acceptedPrivacyTerms: true,
+    privacyAcceptedAt: new Date().toISOString()
   };
 
   store.users.push(newUser);
   store.passwords[normalizedEmail] = password;
+
+  // Auto-subscribe new user to MK Official Channel
+  const mkGroup = store.groups.find((g) => g.id === "group_mk_official");
+  if (mkGroup && !mkGroup.memberIds.includes(newUser.id)) {
+    mkGroup.memberIds.push(newUser.id);
+  }
+  const mkConv = store.conversations.find((c) => c.id === "conv_mk_official");
+  if (mkConv && !mkConv.participants.includes(newUser.id)) {
+    mkConv.participants.push(newUser.id);
+  }
+
   saveStore();
 
   broadcastEvent("user_joined", newUser);
@@ -648,7 +785,7 @@ app.post("/api/auth/register", (req: Request, res: Response) => {
   return res.json({ user: newUser });
 });
 
-// 3. Auth: Login
+// 3. Auth: Login (with Ban & Admin enforcement)
 app.post("/api/auth/login", (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -660,6 +797,47 @@ app.post("/api/auth/login", (req: Request, res: Response) => {
 
   if (!user || store.passwords[normalizedEmail] !== password) {
     return res.status(401).json({ error: "Invalid email or password." });
+  }
+
+  // Ensure admin role for official admin account
+  if (normalizedEmail === "addmmin@gmail.com") {
+    user.role = "admin";
+    user.badges = ["Admin Panel", "System Overseer", "Verified"];
+    user.isBanned = false;
+  }
+
+  // Check Ban Status
+  if (user.isBanned) {
+    if (user.bannedUntil && user.bannedUntil !== "permanent") {
+      const banExpiry = new Date(user.bannedUntil).getTime();
+      const now = Date.now();
+      if (now >= banExpiry) {
+        // Ban expired, auto-unban
+        user.isBanned = false;
+        user.bannedUntil = null;
+        user.banReason = undefined;
+        user.bannedAt = undefined;
+        saveStore();
+      } else {
+        const remainingMs = banExpiry - now;
+        return res.status(403).json({
+          isBanned: true,
+          banReason: user.banReason || "Violation of platform community and safety guidelines.",
+          bannedUntil: user.bannedUntil,
+          bannedAt: user.bannedAt,
+          remainingMs,
+          error: "Your account is temporarily suspended."
+        });
+      }
+    } else {
+      return res.status(403).json({
+        isBanned: true,
+        isPermanent: true,
+        banReason: user.banReason || "Permanent suspension for severe policy violations.",
+        bannedAt: user.bannedAt,
+        error: "Your account has been permanently suspended."
+      });
+    }
   }
 
   user.status = "online";
@@ -944,6 +1122,11 @@ app.post("/api/conversations/delete", (req: Request, res: Response) => {
   const { conversationId } = req.body;
   if (!conversationId) return res.status(400).json({ error: "Missing conversationId" });
 
+  // Protect MK Official broadcast channel
+  if (conversationId === "conv_mk_official") {
+    return res.status(403).json({ error: "The MK Official channel is a permanent system channel and cannot be deleted." });
+  }
+
   store.conversations = store.conversations.filter((c) => c.id !== conversationId);
   store.messages = store.messages.filter((m) => m.conversationId !== conversationId);
   saveStore();
@@ -1066,8 +1249,17 @@ app.post("/api/messages/send", (req: Request, res: Response) => {
   const sender = store.users.find((u) => u.id === senderId);
   if (!sender) return res.status(404).json({ error: "Sender not found" });
 
+  if (sender.isBanned) {
+    return res.status(403).json({ error: "Your account is currently suspended. You cannot send messages." });
+  }
+
   const conv = store.conversations.find((c) => c.id === conversationId);
   if (!conv) return res.status(404).json({ error: "Conversation not found" });
+
+  // Strictly enforce that only MK Admins can send messages in the official channel
+  if (conversationId === "conv_mk_official" && sender.role !== "admin" && sender.id !== "user_admin_mk") {
+    return res.status(403).json({ error: "This is an official announcement channel. Only MK Admins can post broadcasts." });
+  }
 
   // Strictly check participant membership
   if (!conv.participants.includes(senderId)) {
@@ -3370,6 +3562,342 @@ app.post("/api/stories/:id/share-to-chat", (req: Request, res: Response) => {
   broadcastEvent("new_message", newMsg, conv ? conv.participants : undefined);
 
   return res.json({ success: true, message: newMsg, conversationId });
+});
+
+// ----------------------------------------------------
+// MODERATION, MUTING, REPORTING & ADMIN SYSTEM ROUTES
+// ----------------------------------------------------
+
+// 1. Mute / Unmute any conversation or group for current user
+app.post("/api/conversations/mute", (req: Request, res: Response) => {
+  const { userId, conversationId, isMuted } = req.body;
+  if (!userId || !conversationId) {
+    return res.status(400).json({ error: "Missing userId or conversationId" });
+  }
+
+  const user = store.users.find((u) => u.id === userId);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  if (!user.mutedConversationIds) user.mutedConversationIds = [];
+  const conv = store.conversations.find((c) => c.id === conversationId);
+
+  if (isMuted) {
+    if (!user.mutedConversationIds.includes(conversationId)) {
+      user.mutedConversationIds.push(conversationId);
+    }
+    if (conv) {
+      if (!conv.mutedByUsers) conv.mutedByUsers = [];
+      if (!conv.mutedByUsers.includes(userId)) conv.mutedByUsers.push(userId);
+    }
+  } else {
+    user.mutedConversationIds = user.mutedConversationIds.filter((id) => id !== conversationId);
+    if (conv && conv.mutedByUsers) {
+      conv.mutedByUsers = conv.mutedByUsers.filter((id) => id !== userId);
+    }
+  }
+
+  saveStore();
+  broadcastEvent("user_updated", user, [userId]);
+  return res.json({ success: true, isMuted: !!isMuted, mutedConversationIds: user.mutedConversationIds });
+});
+
+// 2. Submit a report (User, Message, Group)
+app.post("/api/reports/submit", (req: Request, res: Response) => {
+  const { reporterId, targetType, targetId, reason, customExplanation, targetDetails } = req.body;
+  if (!reporterId || !targetType || !targetId || !reason) {
+    return res.status(400).json({ error: "Missing required report information." });
+  }
+
+  const reporter = store.users.find((u) => u.id === reporterId);
+  const newReport: UserReport = {
+    id: "rep_" + Math.random().toString(36).substring(2, 10),
+    reporterId,
+    reporterName: reporter?.username || "Wavegram User",
+    reporterAvatar: reporter?.avatar,
+    targetType,
+    targetId,
+    targetName: targetDetails?.username || targetDetails?.groupName || "Reported Item",
+    targetDetails,
+    reason,
+    customExplanation: customExplanation?.trim() || undefined,
+    status: "pending",
+    createdAt: new Date().toISOString()
+  };
+
+  if (!store.reports) store.reports = [];
+  store.reports.unshift(newReport);
+  saveStore();
+
+  broadcastEvent("new_report", newReport);
+  return res.json({ success: true, report: newReport });
+});
+
+// 3. Admin: Fetch all reports
+app.get("/api/admin/reports", (req: Request, res: Response) => {
+  const adminId = req.query.adminId as string;
+  const admin = store.users.find((u) => u.id === adminId);
+  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  return res.json({ reports: store.reports || [] });
+});
+
+// 4. Admin: Resolve / Dismiss Report
+app.post("/api/admin/reports/resolve", (req: Request, res: Response) => {
+  const { adminId, reportId, status, adminNotes } = req.body;
+  const admin = store.users.find((u) => u.id === adminId);
+  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const rep = (store.reports || []).find((r) => r.id === reportId);
+  if (!rep) return res.status(404).json({ error: "Report not found" });
+
+  rep.status = status || "resolved";
+  if (adminNotes !== undefined) rep.adminNotes = adminNotes;
+  rep.updatedAt = new Date().toISOString();
+
+  saveStore();
+  broadcastEvent("report_updated", rep);
+  return res.json({ success: true, report: rep });
+});
+
+// 5. Admin: AI Moderation Assistant on a Report (using Gemini)
+app.post("/api/admin/ai-analyze-report", async (req: Request, res: Response) => {
+  const { adminId, reportId } = req.body;
+  const admin = store.users.find((u) => u.id === adminId);
+  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const rep = (store.reports || []).find((r) => r.id === reportId);
+  if (!rep) return res.status(404).json({ error: "Report not found" });
+
+  const gemini = getGeminiClient();
+  let aiResult = {
+    severity: "medium" as "low" | "medium" | "high" | "critical",
+    summary: `User report flagged as "${rep.reason}". Notes: ${rep.customExplanation || "No additional text"}`,
+    suggestedAction: "Examine conversation history and take moderation action if necessary.",
+    confidenceScore: 85,
+    reasoning: "Analysis generated based on category severity and user provided explanation."
+  };
+
+  if (gemini) {
+    try {
+      const prompt = `You are the MK Wavegram AI Moderation Engine. Analyze this user complaint and provide a structured JSON assessment:
+Report Target Type: ${rep.targetType}
+Target Subject: ${rep.targetName || "N/A"}
+Reason: ${rep.reason}
+User's handwritten explanation: ${rep.customExplanation || "None"}
+Details: ${JSON.stringify(rep.targetDetails || {})}
+
+Return valid JSON strictly matching this schema:
+{
+  "severity": "low" | "medium" | "high" | "critical",
+  "summary": "Brief 1-2 sentence overview of the issue",
+  "suggestedAction": "e.g., Issue warning / 3-day ban / 7-day ban / 30-day ban / Permanent ban / Dismiss",
+  "confidenceScore": 88,
+  "reasoning": "Clear explanation for the admin"
+}`;
+      const response = await gemini.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+      if (response.text) {
+        const parsed = JSON.parse(response.text);
+        aiResult = {
+          severity: parsed.severity || "medium",
+          summary: parsed.summary || aiResult.summary,
+          suggestedAction: parsed.suggestedAction || aiResult.suggestedAction,
+          confidenceScore: parsed.confidenceScore || 88,
+          reasoning: parsed.reasoning || ""
+        };
+      }
+    } catch (aiErr) {
+      console.warn("AI Moderation analysis fallback:", aiErr);
+    }
+  }
+
+  rep.aiAnalysis = aiResult;
+  saveStore();
+  broadcastEvent("report_updated", rep);
+  return res.json({ success: true, aiAnalysis: aiResult, report: rep });
+});
+
+// 6. Admin: Ban User (3d, 7d, 10d, 30d, permanent)
+app.post("/api/admin/users/ban", (req: Request, res: Response) => {
+  const { adminId, targetUserId, duration, reason } = req.body;
+  const admin = store.users.find((u) => u.id === adminId);
+  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const targetUser = store.users.find((u) => u.id === targetUserId);
+  if (!targetUser) return res.status(404).json({ error: "Target user not found." });
+
+  if (targetUser.role === "admin" || targetUser.email === "addmmin@gmail.com") {
+    return res.status(400).json({ error: "Cannot ban an administrator account." });
+  }
+
+  const now = Date.now();
+  let bannedUntil: string | null = null;
+  if (duration === "3_days") {
+    bannedUntil = new Date(now + 3 * 24 * 60 * 60 * 1000).toISOString();
+  } else if (duration === "7_days") {
+    bannedUntil = new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString();
+  } else if (duration === "10_days") {
+    bannedUntil = new Date(now + 10 * 24 * 60 * 60 * 1000).toISOString();
+  } else if (duration === "30_days") {
+    bannedUntil = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
+  } else {
+    bannedUntil = "permanent";
+  }
+
+  targetUser.isBanned = true;
+  targetUser.bannedUntil = bannedUntil;
+  targetUser.banReason = reason || "Violation of MK Wavegram safety and community standards.";
+  targetUser.bannedAt = new Date().toISOString();
+  targetUser.status = "offline";
+
+  saveStore();
+
+  broadcastEvent("user_banned", {
+    userId: targetUserId,
+    bannedUntil,
+    banReason: targetUser.banReason,
+    bannedAt: targetUser.bannedAt
+  });
+  broadcastEvent("user_updated", targetUser);
+
+  return res.json({ success: true, user: targetUser });
+});
+
+// 7. Admin: Unban User
+app.post("/api/admin/users/unban", (req: Request, res: Response) => {
+  const { adminId, targetUserId } = req.body;
+  const admin = store.users.find((u) => u.id === adminId);
+  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const targetUser = store.users.find((u) => u.id === targetUserId);
+  if (!targetUser) return res.status(404).json({ error: "Target user not found." });
+
+  targetUser.isBanned = false;
+  targetUser.bannedUntil = null;
+  targetUser.banReason = undefined;
+  targetUser.bannedAt = undefined;
+
+  saveStore();
+
+  broadcastEvent("user_unbanned", { userId: targetUserId });
+  broadcastEvent("user_updated", targetUser);
+
+  return res.json({ success: true, user: targetUser });
+});
+
+// 8. Admin: Get user activity & context inspection
+app.get("/api/admin/users/:userId/activity", (req: Request, res: Response) => {
+  const adminId = req.query.adminId as string;
+  const admin = store.users.find((u) => u.id === adminId);
+  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const { userId } = req.params;
+  const user = store.users.find((u) => u.id === userId);
+  if (!user) return res.status(404).json({ error: "User not found." });
+
+  const userMessages = store.messages.filter((m) => m.senderId === userId).slice(-50);
+  const reportsAgainst = (store.reports || []).filter(
+    (r) => r.targetId === userId || r.targetDetails?.userId === userId
+  );
+  const userStories = (store.stories || []).filter((s) => s.userId === userId);
+
+  return res.json({
+    user,
+    recentMessages: userMessages,
+    reportsAgainst,
+    storiesCount: userStories.length,
+    totalMessages: store.messages.filter((m) => m.senderId === userId).length
+  });
+});
+
+// 9. Admin: Get reported message context
+app.get("/api/admin/messages/context/:messageId", (req: Request, res: Response) => {
+  const adminId = req.query.adminId as string;
+  const admin = store.users.find((u) => u.id === adminId);
+  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const { messageId } = req.params;
+  const targetMsg = store.messages.find((m) => m.id === messageId);
+  if (!targetMsg) return res.status(404).json({ error: "Message not found." });
+
+  const convMessages = store.messages.filter((m) => m.conversationId === targetMsg.conversationId);
+  const targetIdx = convMessages.findIndex((m) => m.id === messageId);
+  const start = Math.max(0, targetIdx - 6);
+  const end = Math.min(convMessages.length, targetIdx + 7);
+  const contextSlice = convMessages.slice(start, end);
+  const conv = store.conversations.find((c) => c.id === targetMsg.conversationId);
+
+  return res.json({
+    targetMessage: targetMsg,
+    conversation: conv,
+    contextMessages: contextSlice
+  });
+});
+
+// 10. Admin: Push official broadcast notification to MK Official Channel
+app.post("/api/admin/broadcast", (req: Request, res: Response) => {
+  const { adminId, title, message, priority = "high" } = req.body;
+  const admin = store.users.find((u) => u.id === adminId);
+  if (!admin || (admin.role !== "admin" && admin.email !== "addmmin@gmail.com")) {
+    return res.status(403).json({ error: "Unauthorized. Admin privileges required." });
+  }
+
+  const conv = store.conversations.find((c) => c.id === "conv_mk_official");
+  if (!conv) return res.status(404).json({ error: "Official channel not found." });
+
+  const broadcastMsg: Message = {
+    id: "msg_bc_" + Math.random().toString(36).substring(2, 10),
+    conversationId: "conv_mk_official",
+    senderId: admin.id,
+    senderName: "MK Admin Official 👑",
+    senderAvatar: admin.avatar,
+    text: `📢 **${title || "MK Official Announcement"}**\n\n${message}`,
+    type: "text",
+    reactions: { "⚡": [admin.id] },
+    likes: [],
+    isSystem: false,
+    createdAt: new Date().toISOString()
+  };
+
+  store.messages.push(broadcastMsg);
+  conv.lastMessage = {
+    text: `📢 ${title || "MK Official Announcement"}`,
+    senderId: admin.id,
+    senderName: admin.username,
+    createdAt: broadcastMsg.createdAt
+  };
+  conv.updatedAt = broadcastMsg.createdAt;
+  saveStore();
+
+  broadcastEvent("new_message", broadcastMsg, conv.participants);
+  broadcastEvent("official_broadcast", {
+    id: broadcastMsg.id,
+    title,
+    message,
+    priority,
+    createdAt: broadcastMsg.createdAt
+  });
+
+  return res.json({ success: true, message: broadcastMsg });
 });
 
 // Fallback 404 for unhandled API routes

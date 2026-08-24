@@ -25,7 +25,12 @@ import {
   CheckCheck,
   Check as CheckIcon,
   Camera,
-  Layers
+  Layers,
+  VolumeX,
+  Volume2,
+  ShieldAlert,
+  ShieldCheck,
+  Radio
 } from "lucide-react";
 
 interface SidebarProps {
@@ -52,6 +57,9 @@ interface SidebarProps {
   onDeleteConversation?: (convId: string) => void;
   onOpenStoryCreator: () => void;
   onOpenStoryViewer: (targetUserId: string, initialStoryIndex?: number) => void;
+  onOpenAdminPanel?: () => void;
+  onToggleMuteConversation?: (convId: string, isMuted: boolean) => void;
+  onOpenReportModal?: (type: "user" | "group" | "message", target: any) => void;
 }
 
 // MK Wavegram Signature vibrant Avatar color palette based on name hash
@@ -110,12 +118,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   onDeleteConversation,
   onOpenStoryCreator,
-  onOpenStoryViewer
+  onOpenStoryViewer,
+  onOpenAdminPanel,
+  onToggleMuteConversation,
+  onOpenReportModal
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [showDropdownMenu, setShowDropdownMenu] = useState(false);
   const [showFabMenu, setShowFabMenu] = useState(false);
+
+  const isAdmin = currentUser.role === "admin" || currentUser.email === "addmmin@gmail.com";
 
   const pendingIncomingRequests = chatRequests.filter(
     (r) => r.toUserId === currentUser.id && r.status === "pending"
@@ -132,6 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   const filteredConversations = conversations.filter((c) => {
+    if (c.id === "conv_mk_official" || c.isOfficialChannel) return true;
     if (c.type === "group") {
       const g = groups.find((grp) => grp.id === c.groupId);
       return g?.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -140,6 +154,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       const otherUser = allUsers.find((u) => u.id === otherUserId);
       return otherUser?.username.toLowerCase().includes(searchQuery.toLowerCase());
     }
+  }).sort((a, b) => {
+    if (a.id === "conv_mk_official" || a.isOfficialChannel) return -1;
+    if (b.id === "conv_mk_official" || b.isOfficialChannel) return 1;
+    const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : new Date(a.updatedAt || 0).getTime();
+    const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : new Date(b.updatedAt || 0).getTime();
+    return timeB - timeA;
   });
 
   const filteredGroups = groups.filter(
@@ -215,6 +235,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <h1 className="text-[20px] font-bold text-white tracking-wide flex items-center gap-2">
                 <span>MK Wavegram</span>
               </h1>
+              {isAdmin && (
+                <button
+                  onClick={onOpenAdminPanel}
+                  title="Admin Command Center"
+                  className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-bold flex items-center gap-1 hover:bg-amber-500/30 transition"
+                >
+                  <span>👑 Admin</span>
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-1">
@@ -243,6 +272,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onClick={() => setShowDropdownMenu(false)}
                     />
                     <div className="absolute right-0 top-11 w-56 bg-[#242f3d] border border-[#101921] rounded-xl shadow-2xl py-1.5 z-40 text-sm text-white animate-in fade-in zoom-in-95 duration-100">
+                      {isAdmin && onOpenAdminPanel && (
+                        <button
+                          onClick={() => {
+                            setShowDropdownMenu(false);
+                            onOpenAdminPanel();
+                          }}
+                          className="w-full px-4 py-2.5 flex items-center gap-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 transition-colors text-left border-b border-[#101921]"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-amber-400" />
+                          <span className="font-bold">MK Admin Panel 👑</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={() => {
                           setShowDropdownMenu(false);
@@ -397,27 +439,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ) : (
               filteredConversations.map((conv) => {
                 const isGroup = conv.type === "group";
+                const isOfficial = conv.id === "conv_mk_official" || conv.isOfficialChannel;
+                const isMuted = currentUser.mutedConversationIds?.includes(conv.id);
+
                 let name = "Conversation";
                 let avatar = "";
                 let online = false;
                 let isVerified = false;
+                let targetUserObj: User | undefined;
+                let targetGroupObj: Group | undefined;
 
                 if (isGroup) {
                   const grp = groups.find((g) => g.id === conv.groupId);
-                  name = grp?.name || "Group Chat";
+                  targetGroupObj = grp;
+                  name = grp?.name || (isOfficial ? "MK Wavegram Official ⚡" : "Group Chat");
                   avatar = grp?.avatar || "";
+                  isVerified = isOfficial || !!grp?.isVerified;
                 } else {
                   const otherUserId = conv.participants.find((id) => id !== currentUser.id);
                   const otherUser = allUsers.find((u) => u.id === otherUserId);
-                  name = otherUser?.username || "MK Wavegram User";
+                  targetUserObj = otherUser;
+                  name = otherUser?.username || (isOfficial ? "MK Admin Official 👑" : "MK Wavegram User");
                   avatar = otherUser?.avatar || "";
                   online = otherUser?.status === "online";
-                  isVerified = otherUser?.hasAccount !== false;
+                  isVerified = isOfficial || otherUser?.hasAccount !== false;
                 }
 
                 const isActive = conv.id === activeConversationId;
-                const avatarColor = getTelegramAvatarColor(name);
-                const initials = getTelegramInitials(name);
+                const avatarColor = isOfficial ? "bg-gradient-to-tr from-[#3390ec] to-[#8a4fff]" : getTelegramAvatarColor(name);
+                const initials = isOfficial ? "MK" : getTelegramInitials(name);
 
                 return (
                   <div
@@ -426,6 +476,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className={`w-full px-3.5 py-3 flex items-center gap-3.5 cursor-pointer transition-colors group relative ${
                       isActive
                         ? "bg-[#2b5278] text-white"
+                        : isOfficial
+                        ? "bg-[#1f2c3a]/70 hover:bg-[#202b36] border-l-4 border-[#3390ec]"
                         : "hover:bg-[#202b36] bg-[#0e1621] text-white"
                     }`}
                   >
@@ -435,14 +487,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <img
                           src={avatar}
                           alt={name}
-                          className="w-12 h-12 rounded-full object-cover bg-[#242f3d]"
+                          className={`w-12 h-12 rounded-full object-cover bg-[#242f3d] ${isOfficial ? "ring-2 ring-[#3390ec]" : ""}`}
                           onError={(e) => {
                             (e.currentTarget as HTMLElement).style.display = "none";
                           }}
                         />
                       ) : (
                         <div
-                          className={`w-12 h-12 rounded-full ${avatarColor} text-white flex items-center justify-center font-bold text-base shadow-sm`}
+                          className={`w-12 h-12 rounded-full ${avatarColor} text-white flex items-center justify-center font-bold text-base shadow-sm ${isOfficial ? "ring-2 ring-[#3390ec]" : ""}`}
                         >
                           {initials}
                         </div>
@@ -455,12 +507,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {/* Chat Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
-                        <div className="flex items-center gap-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5 min-w-0 pr-2">
                           <span className="font-semibold text-[15px] truncate text-white">
                             {name}
                           </span>
-                          {isVerified && (
+                          {isOfficial && (
+                            <span className="text-[10px] px-1.5 py-0.2 bg-[#3390ec]/20 text-[#3390ec] border border-[#3390ec]/40 rounded font-bold uppercase shrink-0">
+                              Official
+                            </span>
+                          )}
+                          {isVerified && !isOfficial && (
                             <BadgeCheck className="w-4 h-4 text-[#3390ec] shrink-0" />
+                          )}
+                          {isMuted && (
+                            <VolumeX className="w-3.5 h-3.5 text-slate-400 shrink-0" title="Muted Conversation" />
                           )}
                         </div>
                         {conv.lastMessage && (
@@ -501,21 +561,59 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                     </div>
 
-                    {onDeleteConversation && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm(`Delete chat with ${name}?`)) {
-                            onDeleteConversation(conv.id);
-                          }
-                        }}
-                        title="Delete Chat"
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full text-[#7d8b99] hover:text-rose-400 hover:bg-[#17212b] transition-all shrink-0"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    {/* Action buttons on hover */}
+                    <div className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 shrink-0 transition-all">
+                      {onToggleMuteConversation && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleMuteConversation(conv.id, !isMuted);
+                          }}
+                          title={isMuted ? "Unmute conversation" : "Mute conversation"}
+                          className={`p-1.5 rounded-full transition ${
+                            isMuted
+                              ? "text-amber-400 hover:bg-amber-500/20"
+                              : "text-[#7d8b99] hover:text-white hover:bg-[#17212b]"
+                          }`}
+                        >
+                          {isMuted ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                        </button>
+                      )}
+
+                      {!isOfficial && onOpenReportModal && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenReportModal(
+                              isGroup ? "group" : "user",
+                              isGroup ? targetGroupObj : targetUserObj
+                            );
+                          }}
+                          title="Signaler / Report"
+                          className="p-1.5 rounded-full text-[#7d8b99] hover:text-red-400 hover:bg-[#17212b] transition-all"
+                        >
+                          <ShieldAlert className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      {!isOfficial && onDeleteConversation && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Delete chat with ${name}?`)) {
+                              onDeleteConversation(conv.id);
+                            }
+                          }}
+                          title="Delete Chat"
+                          className="p-1.5 rounded-full text-[#7d8b99] hover:text-rose-400 hover:bg-[#17212b] transition-all shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })

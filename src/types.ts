@@ -8,6 +8,12 @@ export interface User {
   lastSeen?: string;
   createdAt: string;
   badges?: string[];
+  role?: 'admin' | 'user';
+  isBanned?: boolean;
+  bannedUntil?: string | null; // ISO timestamp or 'permanent'
+  banReason?: string;
+  bannedAt?: string;
+  mutedConversationIds?: string[]; // IDs of conversations/groups muted by this user
   blockedUserIds?: string[];
   closeFriendsUserIds?: string[]; // User IDs in user's Close Friends list
   isPrivate?: boolean;
@@ -147,6 +153,8 @@ export interface Conversation {
   type: 'dm' | 'group';
   participants: string[]; // user IDs
   groupId?: string;
+  isOfficialChannel?: boolean; // When true, pinned official MK broadcast channel
+  mutedByUsers?: string[]; // Array of user IDs who have muted this conversation
   lastMessage?: {
     text: string;
     senderId: string;
@@ -382,3 +390,37 @@ export interface UserStoriesGroup {
   hasUnviewed: boolean;
   lastUpdated: string;
 }
+
+export interface UserReport {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  reporterAvatar?: string;
+  targetType: 'user' | 'message' | 'group';
+  targetId: string;
+  targetName?: string;
+  targetDetails?: {
+    username?: string;
+    userId?: string;
+    userAvatar?: string;
+    messageText?: string;
+    messageType?: string;
+    conversationId?: string;
+    groupId?: string;
+    groupName?: string;
+  };
+  reason: string; // 'Harassment' | 'Inappropriate Content' | 'Spam / Scam' | 'Hate Speech' | 'Violence' | 'Other'
+  customExplanation?: string;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+  aiAnalysis?: {
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    summary: string;
+    suggestedAction: string;
+    confidenceScore?: number;
+    reasoning?: string;
+  };
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+

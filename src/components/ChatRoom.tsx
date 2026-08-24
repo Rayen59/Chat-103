@@ -102,6 +102,8 @@ interface ChatRoomProps {
   onBackMobile?: () => void;
   onDeleteConversation?: (convId: string) => void;
   onBlockUser?: (targetUserId: string) => void;
+  onToggleMute?: (convId: string, isMuted: boolean) => void;
+  onOpenReportModal?: (type: "user" | "message" | "group", target: any) => void;
 }
 
 const EMOJI_LIST = [
@@ -130,7 +132,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   onSelectUserProfile,
   onBackMobile,
   onDeleteConversation,
-  onBlockUser
+  onBlockUser,
+  onToggleMute,
+  onOpenReportModal
 }) => {
   const [inputText, setInputText] = useState("");
   const [replyTo, setReplyTo] = useState<ReplyToMessage | null>(null);
@@ -459,13 +463,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const otherUserId = conversation.participants.find((id) => id !== currentUser.id);
   const otherUser = allUsers.find((u) => u.id === otherUserId);
 
+  const isOfficialChannel = conversation.id === "conv_mk_official" || !!conversation.isOfficialChannel;
+  const isAdmin = currentUser.role === "admin" || currentUser.email === "addmmin@gmail.com";
+  const isMuted = currentUser.mutedConversationIds?.includes(conversation.id);
+  const isMKReadOnly = isOfficialChannel && !isAdmin;
+
   const isGroupAdmin = conversation.type === "group" && group ? (group.adminIds.includes(currentUser.id) || group.creatorId === currentUser.id) : false;
   const isRestrictedInGroup = conversation.type === "group" && group ? (group.restrictedMemberIds || []).includes(currentUser.id) : false;
-  const isAnnouncementOnly = conversation.type === "group" && group ? (!!group.announcementMode && !isGroupAdmin) : false;
+  const isAnnouncementOnly = isMKReadOnly || (conversation.type === "group" && group ? (!!group.announcementMode && !isGroupAdmin) : false);
   const isOtherUserBlocked = conversation.type === "dm" && otherUserId ? (currentUser.blockedUserIds || []).includes(otherUserId) : false;
   const isMeBlockedByOther = conversation.type === "dm" && otherUser ? (otherUser.blockedUserIds || []).includes(currentUser.id) : false;
 
-  const title = conversation.type === "group" ? group?.name || "Group Chat" : otherUser?.username || "Chat";
+  const title = isOfficialChannel ? "MK Wavegram Official ⚡" : conversation.type === "group" ? group?.name || "Group Chat" : otherUser?.username || "Chat";
   const avatar = conversation.type === "group" ? group?.avatar : otherUser?.avatar;
   const isOnline = conversation.type === "dm" && otherUser?.status === "online";
 
@@ -1155,6 +1164,18 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1 relative">
+          {onToggleMute && (
+            <button
+              onClick={() => onToggleMute(conversation.id, !isMuted)}
+              title={isMuted ? "Rétablir le son (Unmute)" : "Mettre en sourdine (Mute)"}
+              className={`p-2 rounded-full transition-colors ${
+                isMuted ? "text-amber-400 bg-amber-500/20 hover:bg-amber-500/30" : "text-[#7d8b99] hover:text-white hover:bg-[#202b36]"
+              }`}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+          )}
+
           <button
             onClick={() => {
               if (selectionMode) {
@@ -1172,28 +1193,45 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
           >
             <CheckSquare className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onStartCall("voice")}
-            title="Voice Call"
-            className="p-2 rounded-full text-[#7d8b99] hover:text-white hover:bg-[#202b36] transition-colors"
-          >
-            <Phone className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onStartCall("video")}
-            title="Video Call"
-            className="p-2 rounded-full text-[#7d8b99] hover:text-white hover:bg-[#202b36] transition-colors"
-          >
-            <Video className="w-4 h-4" />
-          </button>
+
+          {!isOfficialChannel && (
+            <>
+              <button
+                onClick={() => onStartCall("voice")}
+                title="Voice Call"
+                className="p-2 rounded-full text-[#7d8b99] hover:text-white hover:bg-[#202b36] transition-colors"
+              >
+                <Phone className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onStartCall("video")}
+                title="Video Call"
+                className="p-2 rounded-full text-[#7d8b99] hover:text-white hover:bg-[#202b36] transition-colors"
+              >
+                <Video className="w-4 h-4" />
+              </button>
+            </>
+          )}
+
           {conversation.type === "group" ? (
-            <button
-              onClick={onOpenGroupSettings}
-              title="Group Info"
-              className="p-2 rounded-full text-[#7d8b99] hover:text-white hover:bg-[#202b36] transition-colors"
-            >
-              <Info className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={onOpenGroupSettings}
+                title="Group Info"
+                className="p-2 rounded-full text-[#7d8b99] hover:text-white hover:bg-[#202b36] transition-colors"
+              >
+                <Info className="w-4 h-4" />
+              </button>
+              {onOpenReportModal && !isOfficialChannel && (
+                <button
+                  onClick={() => onOpenReportModal("group", group)}
+                  title="Signaler ce groupe (Report)"
+                  className="p-2 rounded-full text-[#7d8b99] hover:text-rose-400 hover:bg-[#202b36] transition-colors"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           ) : (
             <div className="relative">
               <button
@@ -1205,7 +1243,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
               </button>
 
               {showHeaderMenu && (
-                <div className="absolute right-0 top-full mt-1.5 w-48 bg-[#17212b] border border-[#101921] rounded-xl p-1.5 shadow-2xl z-30 space-y-0.5">
+                <div className="absolute right-0 top-full mt-1.5 w-52 bg-[#17212b] border border-[#101921] rounded-xl p-1.5 shadow-2xl z-30 space-y-0.5">
                   <button
                     onClick={() => {
                       setSelectionMode(true);
@@ -1217,7 +1255,20 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                     <span>Select Messages</span>
                   </button>
 
-                  {otherUserId && onBlockUser && (
+                  {onToggleMute && (
+                    <button
+                      onClick={() => {
+                        onToggleMute(conversation.id, !isMuted);
+                        setShowHeaderMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-[#202b36] text-white transition-colors"
+                    >
+                      {isMuted ? <Volume2 className="w-4 h-4 text-amber-400" /> : <VolumeX className="w-4 h-4 text-[#7d8b99]" />}
+                      <span>{isMuted ? "Rétablir le son (Unmute)" : "Mettre en sourdine (Mute)"}</span>
+                    </button>
+                  )}
+
+                  {otherUserId && onBlockUser && !isOfficialChannel && (
                     <button
                       onClick={() => {
                         onBlockUser(otherUserId);
@@ -1239,7 +1290,20 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                     </button>
                   )}
 
-                  {onDeleteConversation && (
+                  {onOpenReportModal && otherUser && !isOfficialChannel && (
+                    <button
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        onOpenReportModal("user", otherUser);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 hover:bg-rose-950/30 text-rose-300 transition-colors"
+                    >
+                      <ShieldAlert className="w-4 h-4 text-rose-400" />
+                      <span>Signaler cet utilisateur</span>
+                    </button>
+                  )}
+
+                  {!isOfficialChannel && onDeleteConversation && (
                     <button
                       onClick={() => {
                         setShowHeaderMenu(false);
@@ -2060,7 +2124,23 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
       )}
 
       {/* Input Bar or Restricted/Blocked Notice */}
-      {isRestrictedInGroup ? (
+      {isMKReadOnly ? (
+        <div className="p-3.5 bg-[#17212b] border-t border-[#101921] flex flex-wrap items-center justify-between px-4 gap-2 text-xs text-slate-300">
+          <div className="flex items-center gap-2">
+            <Megaphone className="w-4 h-4 text-[#3390ec] shrink-0" />
+            <span>📢 <strong>Canal Officiel MK :</strong> Seul l'administrateur peut publier des annonces et alertes globales.</span>
+          </div>
+          {onToggleMute && (
+            <button
+              onClick={() => onToggleMute(conversation.id, !isMuted)}
+              className="px-3 py-1.5 bg-[#202b36] hover:bg-[#283644] text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              {isMuted ? <Volume2 className="w-3.5 h-3.5 text-amber-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
+              <span>{isMuted ? "Rétablir le son" : "Mode Muet"}</span>
+            </button>
+          )}
+        </div>
+      ) : isRestrictedInGroup ? (
         <div className="p-3.5 bg-rose-950/40 border-t border-rose-900/40 flex items-center justify-center gap-2 text-rose-300 text-xs font-semibold">
           <VolumeX className="w-4 h-4 text-rose-400 shrink-0" />
           <span>You have been restricted to read-only mode by group administrators.</span>
@@ -2862,6 +2942,20 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
                 >
                   <Edit2 className="w-4 h-4 text-amber-400" />
                   <span>Edit message</span>
+                </button>
+              )}
+
+              {onOpenReportModal && contextMenuMsg.senderId !== currentUser.id && (
+                <button
+                  onClick={() => {
+                    const msg = contextMenuMsg;
+                    setContextMenuMsg(null);
+                    onOpenReportModal("message", msg);
+                  }}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-rose-950/30 text-rose-400 transition-colors"
+                >
+                  <ShieldAlert className="w-4 h-4 text-rose-400" />
+                  <span>Signaler ce message (Report)</span>
                 </button>
               )}
 

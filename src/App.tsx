@@ -13,6 +13,8 @@ import { StoryCreatorModal } from "./components/StoryCreatorModal";
 import { StoryViewerModal } from "./components/StoryViewerModal";
 import { NotesModal } from "./components/NotesModal";
 import { NotificationToast, AppNotification } from "./components/NotificationToast";
+import { AdminPanelModal } from "./components/AdminPanelModal";
+import { ReportModal } from "./components/ReportModal";
 import { MessageSquare } from "lucide-react";
 
 export default function App() {
@@ -33,6 +35,13 @@ export default function App() {
   const [viewMode, setViewMode] = useState<"chat" | "analytics">("chat");
   const [mobileShowChat, setMobileShowChat] = useState<boolean>(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [reportModalState, setReportModalState] = useState<{
+    open: boolean;
+    type: "user" | "message" | "group";
+    target: any;
+    conversationId?: string;
+  } | null>(null);
 
   // Stories Modals State
   const [storyCreatorOpen, setStoryCreatorOpen] = useState(false);
@@ -175,7 +184,73 @@ export default function App() {
       .catch((err) => console.error("Error fetching messages:", err));
   }, [activeConversationId, currentUser?.id]);
 
-  // Realtime Server-Sent Events listener
+  // Mute / Unmute conversation
+  const handleToggleMuteConversation = async (convId: string, isMuted: boolean) => {
+    if (!currentUser) return;
+    try {
+      const res = await fetch("/api/conversations/mute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          conversationId: convId,
+          isMuted
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updated = {
+          ...currentUser,
+          mutedConversationIds: data.mutedConversationIds
+        };
+        setCurrentUser(updated);
+        localStorage.setItem("wavegram_user", JSON.stringify(updated));
+
+        const notif: AppNotification = {
+          id: Math.random().toString(),
+          type: "system",
+          title: isMuted ? "Mode Muet Activé" : "Notifications Réactivées",
+          senderName: "Système MK",
+          text: isMuted ? "Cette conversation est maintenant en sourdine." : "Vous recevrez des alertes pour cette discussion.",
+          createdAt: new Date().toISOString()
+        };
+        setNotifications((prev) => [...prev, notif]);
+      }
+    } catch (err) {
+      console.error("Toggle mute error:", err);
+    }
+  };
+
+  // Open Report Modal
+  const handleOpenReportModal = (type: "user" | "message" | "group", target: any) => {
+    setReportModalState({
+      open: true,
+      type,
+      target,
+      conversationId: activeConversationId || undefined
+    });
+  };
+
+  const handleReportSubmitted = () => {
+    const notif: AppNotification = {
+      id: Math.random().toString(),
+      type: "system",
+      title: "Signalement Enregistré",
+      senderName: "Système MK",
+      text: "Votre signalement a été transmis avec succès à l'administration MK Wavegram.",
+      createdAt: new Date().toISOString()
+    };
+    setNotifications((prev) => [...prev, notif]);
+  };
+
+  // Auto-open MK Official channel for Admin
+  useEffect(() => {
+    if (currentUser && (currentUser.role === "admin" || currentUser.email === "addmmin@gmail.com")) {
+      if (!activeConversationId) {
+        setActiveConversationId("conv_mk_official");
+      }
+    }
+  }, [currentUser?.id, currentUser?.role]);
   useEffect(() => {
     if (!currentUser) return;
 
@@ -1208,6 +1283,9 @@ export default function App() {
           onDeleteConversation={handleDeleteConversation}
           onOpenStoryCreator={handleOpenStoryCreator}
           onOpenStoryViewer={handleOpenStoryViewer}
+          onOpenAdminPanel={() => setShowAdminPanel(true)}
+          onToggleMuteConversation={handleToggleMuteConversation}
+          onOpenReportModal={handleOpenReportModal}
         />
       </div>
 
@@ -1241,6 +1319,8 @@ export default function App() {
             }}
             onDeleteConversation={handleDeleteConversation}
             onBlockUser={handleBlockUser}
+            onToggleMute={handleToggleMuteConversation}
+            onOpenReportModal={handleOpenReportModal}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none bg-[#0e1621]">
@@ -1384,6 +1464,35 @@ export default function App() {
           call={activeCall}
           currentUser={currentUser}
           onEndCall={handleEndCall}
+        />
+      )}
+
+      {/* Admin Panel Modal */}
+      {showAdminPanel && currentUser && (
+        <AdminPanelModal
+          currentUser={currentUser}
+          allUsers={allUsers}
+          onClose={() => setShowAdminPanel(false)}
+          onOpenMKChannel={() => {
+            setShowAdminPanel(false);
+            setActiveConversationId("conv_mk_official");
+            setViewMode("chat");
+            setMobileShowChat(true);
+          }}
+        />
+      )}
+
+      {/* Report Modal */}
+      {reportModalState?.open && currentUser && (
+        <ReportModal
+          currentUser={currentUser}
+          targetType={reportModalState.type}
+          targetUser={reportModalState.type === "user" ? reportModalState.target : undefined}
+          targetMessage={reportModalState.type === "message" ? reportModalState.target : undefined}
+          targetGroup={reportModalState.type === "group" ? reportModalState.target : undefined}
+          conversationId={reportModalState.conversationId}
+          onClose={() => setReportModalState(null)}
+          onSuccess={handleReportSubmitted}
         />
       )}
 

@@ -5,7 +5,7 @@ export interface AppNotification {
   id: string;
   type: "message" | "call" | "system";
   title: string;
-  senderName: string;
+  senderName?: string;
   senderAvatar?: string;
   text: string;
   conversationId?: string;
