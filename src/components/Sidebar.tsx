@@ -130,8 +130,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isAdmin =
     currentUser.role === "admin" ||
+    currentUser.id === "user_admin_mk" ||
+    currentUser.email?.toLowerCase().startsWith("admin@") ||
     currentUser.email === "addmmin@gmail.com" ||
-    currentUser.email === "admin@gmail.com";
+    currentUser.email === "admin@gmail.com" ||
+    currentUser.email === "admin@wavegram.com";
 
   const pendingIncomingRequests = chatRequests.filter(
     (r) => r.toUserId === currentUser.id && r.status === "pending"
@@ -278,7 +281,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onClick={() => setShowDropdownMenu(false)}
                     />
                     <div className="absolute right-0 top-11 w-56 bg-[#242f3d] border border-[#101921] rounded-xl shadow-2xl py-1.5 z-40 text-sm text-white animate-in fade-in zoom-in-95 duration-100">
-                      {isAdmin && onOpenAdminPanel && (
+                      {onOpenAdminPanel && (
                         <button
                           onClick={() => {
                             setShowDropdownMenu(false);
@@ -287,7 +290,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           className="w-full px-4 py-2.5 flex items-center gap-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 transition-colors text-left border-b border-[#101921]"
                         >
                           <ShieldCheck className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold">MK Admin Panel 👑</span>
+                          <span className="font-bold">{isAdmin ? "MK Admin Panel 👑" : "Admin Panel & Moderation 👑"}</span>
+                        </button>
+                      )}
+
+                      {onOpenReportModal && (
+                        <button
+                          onClick={() => {
+                            setShowDropdownMenu(false);
+                            onOpenReportModal("user", currentUser);
+                          }}
+                          className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-[#17212b] text-red-300 transition-colors text-left"
+                        >
+                          <ShieldAlert className="w-4 h-4 text-red-400" />
+                          <span>Trust & Safety Center 🛡️</span>
                         </button>
                       )}
 

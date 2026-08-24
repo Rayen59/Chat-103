@@ -21,6 +21,12 @@ export interface User {
   hasAccount?: boolean;
   acceptedPrivacyTerms?: boolean;
   privacyAcceptedAt?: string;
+  warnings?: {
+    id: string;
+    reason: string;
+    date: string;
+    adminId?: string;
+  }[];
 }
 
 export interface NoteMusic {
@@ -420,6 +426,9 @@ export interface UserReport {
     reasoning?: string;
   };
   adminNotes?: string;
+  adminReply?: string;
+  adminReplyAt?: string;
+  actionTaken?: string;
   createdAt: string;
   updatedAt?: string;
 }

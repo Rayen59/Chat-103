@@ -433,9 +433,9 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "system",
-          title: "Accès au groupe révoqué",
-          senderName: "Sécurité Wavegram",
-          text: "Vous avez été retiré de ce groupe par un administrateur.",
+          title: "Group Access Revoked",
+          senderName: "Wavegram Security",
+          text: "You have been removed from this group by an administrator.",
           createdAt: new Date().toISOString()
         };
         setNotifications((prev) => [...prev, notif]);
@@ -474,12 +474,47 @@ export default function App() {
       }
     });
 
+    // Disciplinary warning notification
+    eventSource.addEventListener("user_warning", (e: any) => {
+      const data = JSON.parse(e.data);
+      if (data.userId === currentUser.id) {
+        playNotificationSound();
+        const notif: AppNotification = {
+          id: Math.random().toString(),
+          type: "system",
+          title: "⚠️ Official Moderation Warning",
+          senderName: "MK Safety Team",
+          text: data.reason || "You have received an official warning regarding community standards.",
+          createdAt: new Date().toISOString()
+        };
+        setNotifications((prev) => [...prev, notif]);
+      }
+    });
+
+    // Admin report response notification to reporter
+    eventSource.addEventListener("report_replied", (e: any) => {
+      const { report, reporterId } = JSON.parse(e.data);
+      if (reporterId === currentUser.id) {
+        playNotificationSound();
+        const notif: AppNotification = {
+          id: Math.random().toString(),
+          type: "system",
+          title: "🛡️ Update on Your Report",
+          senderName: "MK Admin Team",
+          text: report.adminReply ? `Response: "${report.adminReply}"` : "An administrator has reviewed your report.",
+          createdAt: new Date().toISOString()
+        };
+        setNotifications((prev) => [...prev, notif]);
+      }
+    });
+
     // Chat requests / private invitations
     eventSource.addEventListener("new_report", (e: any) => {
       const rep = JSON.parse(e.data);
       const isCurrAdmin =
         currentUser.role === "admin" ||
         currentUser.id === "user_admin_mk" ||
+        currentUser.email.toLowerCase().includes("admin") ||
         currentUser.email.toLowerCase() === "addmmin@gmail.com" ||
         currentUser.email.toLowerCase() === "admin@gmail.com";
 
@@ -488,10 +523,10 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "system",
-          title: "🚨 Nouveau signalement reçu",
-          senderName: rep.reporterName || "Utilisateur MK",
+          title: "🚨 New User Report Received",
+          senderName: rep.reporterName || "MK Member",
           senderAvatar: rep.reporterAvatar,
-          text: `Signalement ${rep.targetType} (${rep.targetName}) : ${rep.reason}`,
+          text: `Report against ${rep.targetType} (${rep.targetName}): ${rep.reason}`,
           createdAt: rep.createdAt || new Date().toISOString()
         };
         setNotifications((prev) => [...prev, notif]);
@@ -509,10 +544,10 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "message",
-          title: "Nouvelle invitation de discussion",
-          senderName: newReq.fromUserName || "Membre",
+          title: "New Chat Invitation",
+          senderName: newReq.fromUserName || "Member",
           senderAvatar: newReq.fromUserAvatar,
-          text: newReq.message ? `Invitation : "${newReq.message}"` : "Souhaite démarrer une discussion avec vous",
+          text: newReq.message ? `Invitation: "${newReq.message}"` : "Wants to start a conversation with you",
           createdAt: newReq.createdAt
         };
         setNotifications((prev) => [...prev, notif]);
@@ -535,9 +570,9 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "system",
-          title: "Invitation acceptée !",
-          senderName: data.request.toUserName || "Membre",
-          text: "Votre invitation a été acceptée ! La discussion est maintenant accessible.",
+          title: "Invitation Accepted!",
+          senderName: data.request.toUserName || "Member",
+          text: "Your chat request has been accepted! The conversation is now open.",
           conversationId: data.conversation?.id,
           createdAt: new Date().toISOString()
         };
@@ -563,10 +598,10 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "system",
-          title: "Nouvelle story",
+          title: "New Story",
           senderName: newStory.userName,
           senderAvatar: newStory.userAvatar,
-          text: `A partagé une nouvelle story ${newStory.type} !`,
+          text: `Shared a new ${newStory.type} story!`,
           createdAt: newStory.createdAt
         };
         setNotifications((prev) => [...prev, notif]);
@@ -1517,6 +1552,10 @@ export default function App() {
           currentUser={currentUser}
           allUsers={allUsers}
           onClose={() => setShowAdminPanel(false)}
+          onUserUpdated={(updated) => {
+            setCurrentUser((prev) => (prev ? { ...prev, ...updated } : prev));
+            localStorage.setItem("wavegram_user", JSON.stringify({ ...currentUser, ...updated }));
+          }}
           onOpenMKChannel={() => {
             setShowAdminPanel(false);
             setActiveConversationId("conv_mk_official");
