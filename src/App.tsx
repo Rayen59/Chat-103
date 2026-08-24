@@ -235,9 +235,9 @@ export default function App() {
     const notif: AppNotification = {
       id: Math.random().toString(),
       type: "system",
-      title: "Report Submitted",
-      senderName: "MK System",
-      text: "Your report has been successfully transmitted to the MK Wavegram administration.",
+      title: "Signalement envoyé",
+      senderName: "Système MK",
+      text: "Votre signalement a été transmis à l'équipe de modération de MK Wavegram.",
       createdAt: new Date().toISOString()
     };
     setNotifications((prev) => [...prev, notif]);
@@ -274,25 +274,25 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "message",
-          title: "New Message",
-          senderName: newMsg.senderName || sender?.username || "MK Wavegram User",
+          title: "Nouveau message",
+          senderName: newMsg.senderName || sender?.username || "Utilisateur MK",
           senderAvatar: newMsg.senderAvatar || sender?.avatar,
           text:
             newMsg.type === "voice"
-              ? "🎤 Sent a voice note"
+              ? "🎤 Message vocal"
               : newMsg.type === "image"
-              ? "📷 Sent an image"
+              ? "📷 Photo envoyée"
               : newMsg.type === "video"
-              ? "🎥 Sent a video"
+              ? "🎥 Vidéo envoyée"
               : newMsg.type === "file"
-              ? "📎 Sent an attachment"
+              ? "📎 Fichier joint"
               : newMsg.type === "gif"
-              ? "👾 Sent a GIF"
+              ? "👾 GIF envoyé"
               : newMsg.type === "sticker"
-              ? "🪶 Sent an animated sticker"
+              ? "🪶 Sticker animé"
               : newMsg.type === "poll"
-              ? "📊 Created a group poll"
-              : newMsg.text || "Sent a message",
+              ? "📊 Sondage créé"
+              : newMsg.text || "Nouveau message",
           conversationId: newMsg.conversationId,
           createdAt: newMsg.createdAt
         };
@@ -316,7 +316,7 @@ export default function App() {
             return {
               ...c,
               lastMessage: {
-                text: newMsg.text || (newMsg.type === "sticker" ? "Animated Sticker" : "Media attachment"),
+                text: newMsg.text || (newMsg.type === "sticker" ? "Sticker animé" : "Fichier média"),
                 senderId: newMsg.senderId,
                 senderName: newMsg.senderName,
                 createdAt: newMsg.createdAt
@@ -327,6 +327,22 @@ export default function App() {
           return c;
         })
       );
+    });
+
+    // Official broadcast alert event listener
+    eventSource.addEventListener("official_broadcast", (e: any) => {
+      const data = JSON.parse(e.data);
+      playNotificationSound();
+      const notif: AppNotification = {
+        id: Math.random().toString(),
+        type: "system",
+        title: "📢 Alerte Officielle MK",
+        senderName: "MK Official",
+        text: data.text || "Nouvelle annonce officielle reçue.",
+        conversationId: "conv_mk_official",
+        createdAt: new Date().toISOString()
+      };
+      setNotifications((prev) => [...prev, notif]);
     });
 
     eventSource.addEventListener("message_updated", (e: any) => {
@@ -342,10 +358,10 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "call",
-          title: "Incoming Call",
+          title: "Appel entrant",
           senderName: call.callerName,
           senderAvatar: call.callerAvatar,
-          text: `Incoming ${call.type} call...`,
+          text: `Appel ${call.type === "video" ? "vidéo" : "audio"} entrant...`,
           createdAt: new Date().toISOString()
         };
         setNotifications((prev) => [...prev, notif]);
@@ -393,9 +409,9 @@ export default function App() {
       const notif: AppNotification = {
         id: Math.random().toString(),
         type: "system",
-        title: "Group Deleted",
-        senderName: "Wavegram System",
-        text: "A group you were in has been permanently deleted by an administrator.",
+        title: "Groupe supprimé",
+        senderName: "Système Wavegram",
+        text: "Un groupe dont vous étiez membre a été supprimé par un administrateur.",
         createdAt: new Date().toISOString()
       };
       setNotifications((prev) => [...prev, notif]);
@@ -417,9 +433,9 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "system",
-          title: "Group Access Revoked",
-          senderName: "Wavegram Security",
-          text: "You were removed from this group by an admin and cannot view or send any messages.",
+          title: "Accès au groupe révoqué",
+          senderName: "Sécurité Wavegram",
+          text: "Vous avez été retiré de ce groupe par un administrateur.",
           createdAt: new Date().toISOString()
         };
         setNotifications((prev) => [...prev, notif]);
@@ -472,10 +488,10 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "system",
-          title: "🚨 New User Report Received",
-          senderName: rep.reporterName || "MK Wavegram User",
+          title: "🚨 Nouveau signalement reçu",
+          senderName: rep.reporterName || "Utilisateur MK",
           senderAvatar: rep.reporterAvatar,
-          text: `Flagged ${rep.targetType} (${rep.targetName}): ${rep.reason}`,
+          text: `Signalement ${rep.targetType} (${rep.targetName}) : ${rep.reason}`,
           createdAt: rep.createdAt || new Date().toISOString()
         };
         setNotifications((prev) => [...prev, notif]);
@@ -493,10 +509,10 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "message",
-          title: "New Chat Invitation",
-          senderName: newReq.fromUserName || "Private Member",
+          title: "Nouvelle invitation de discussion",
+          senderName: newReq.fromUserName || "Membre",
           senderAvatar: newReq.fromUserAvatar,
-          text: newReq.message ? `Invitation: "${newReq.message}"` : "Wants to start a conversation with you",
+          text: newReq.message ? `Invitation : "${newReq.message}"` : "Souhaite démarrer une discussion avec vous",
           createdAt: newReq.createdAt
         };
         setNotifications((prev) => [...prev, notif]);
@@ -519,9 +535,9 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "system",
-          title: "Invitation Accepted!",
-          senderName: data.request.toUserName || "Member",
-          text: "Your chat invitation was accepted! The chat is now open in your list.",
+          title: "Invitation acceptée !",
+          senderName: data.request.toUserName || "Membre",
+          text: "Votre invitation a été acceptée ! La discussion est maintenant accessible.",
           conversationId: data.conversation?.id,
           createdAt: new Date().toISOString()
         };
@@ -547,10 +563,10 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "system",
-          title: "New Story Posted",
+          title: "Nouvelle story",
           senderName: newStory.userName,
           senderAvatar: newStory.userAvatar,
-          text: `Shared a new ${newStory.type} story!`,
+          text: `A partagé une nouvelle story ${newStory.type} !`,
           createdAt: newStory.createdAt
         };
         setNotifications((prev) => [...prev, notif]);

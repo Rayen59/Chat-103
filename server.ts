@@ -6,7 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { User, Message, Group, Conversation, ActiveCall, UserAnalytics, ChatRequest, Story, StoryComment, StoryAnonymousAnswer, Note, NoteMusic, UserReport } from "./src/types";
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 // Lazy Gemini AI client initialization
 let aiClient: GoogleGenAI | null = null;
@@ -190,7 +190,7 @@ function ensureOfficialEntities() {
     officialGroup = {
       id: "group_mk_official",
       name: "MK Official ⚡",
-      description: "Official MK Wavegram Announcement & News Channel. Pinned for all users.",
+      description: "Canal officiel d'annonces et d'actualités MK Wavegram. Épinglé pour tous les utilisateurs.",
       avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=MKOfficialChannel&backgroundColor=3390ec,0e1621",
       creatorId: "user_admin_mk",
       adminIds: ["user_admin_mk"],
@@ -205,6 +205,8 @@ function ensureOfficialEntities() {
     store.groups.unshift(officialGroup);
   } else {
     officialGroup.name = "MK Official ⚡";
+    officialGroup.description = "Canal officiel d'annonces et d'actualités MK Wavegram. Épinglé pour tous les utilisateurs.";
+    officialGroup.avatar = officialGroup.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=MKOfficialChannel&backgroundColor=3390ec,0e1621";
     officialGroup.announcementMode = true;
     officialGroup.creatorId = "user_admin_mk";
     if (!officialGroup.adminIds.includes("user_admin_mk")) {
@@ -228,7 +230,7 @@ function ensureOfficialEntities() {
       groupId: "group_mk_official",
       isOfficialChannel: true,
       lastMessage: {
-        text: "⚡ Welcome to MK Wavegram! Stay tuned for official announcements and security updates.",
+        text: "⚡ Bienvenue sur MK Wavegram ! Suivez ici les annonces et alertes de sécurité officielles.",
         senderId: "user_admin_mk",
         senderName: "MK Admin 👑",
         createdAt: new Date().toISOString()
@@ -254,7 +256,7 @@ function ensureOfficialEntities() {
       senderId: "user_admin_mk",
       senderName: "MK Admin 👑",
       senderAvatar: ADMIN_USER.avatar,
-      text: "⚡ **Welcome to MK Wavegram!**\n\nThis is the official announcement channel. All major platform security patches, AI feature updates, and notices will be broadcast here.\n\n🛡️ *Security tip*: MK Wavegram includes native end-to-end moderation, personal notes studio, 24h stories, and real-time AI capabilities.",
+      text: "⚡ **Bienvenue sur le canal officiel MK Wavegram !**\n\nCe canal est dédié aux annonces officielles, alertes de sécurité et nouveautés de la plateforme.\n\n🛡️ *Sécurité & Modération* : Vos discussions privées sont sécurisées et un système de signalement en direct est à votre disposition.",
       type: "text",
       reactions: { "⚡": ["user_admin_mk"], "🚀": ["user_alex"] },
       likes: [],
@@ -748,6 +750,8 @@ function seedInitialData() {
   };
 
   store.messages = [msg1];
+  seedInitialStories();
+  ensureOfficialEntities();
   saveStore();
 }
 
@@ -1287,7 +1291,9 @@ app.get("/api/conversations", (req: Request, res: Response) => {
   const userId = req.query.userId as string;
   if (!userId) return res.status(400).json({ error: "userId required" });
 
-  // Ensure MK official channel includes this user
+  // Guarantee official channel and group exist
+  ensureOfficialEntities();
+
   let mkConv = store.conversations.find((c) => c.id === "conv_mk_official" || c.isOfficialChannel);
   if (mkConv) {
     if (!mkConv.participants.includes(userId)) {
@@ -1298,7 +1304,11 @@ app.get("/api/conversations", (req: Request, res: Response) => {
 
   const userConvs = store.conversations.filter((c) =>
     c.participants.includes(userId) || c.id === "conv_mk_official" || c.isOfficialChannel
-  );
+  ).sort((a, b) => {
+    if (a.id === "conv_mk_official" || a.isOfficialChannel) return -1;
+    if (b.id === "conv_mk_official" || b.isOfficialChannel) return 1;
+    return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+  });
 
   return res.json({ conversations: userConvs });
 });
@@ -2201,8 +2211,16 @@ app.post("/api/notes/:id/share-to-chat", (req: Request, res: Response) => {
 // 13. Group Operations: Get Groups & Create Group
 app.get(["/api/groups", "/api/groups/my-groups"], (req: Request, res: Response) => {
   const userId = req.query.userId as string;
+  ensureOfficialEntities();
+  
+  const officialGroup = store.groups.find((g) => g.id === "group_mk_official");
+  if (userId && officialGroup && !officialGroup.memberIds.includes(userId)) {
+    officialGroup.memberIds.push(userId);
+    saveStore();
+  }
+
   if (userId) {
-    const userGroups = store.groups.filter((g) => g.memberIds.includes(userId));
+    const userGroups = store.groups.filter((g) => g.memberIds.includes(userId) || g.id === "group_mk_official");
     return res.json({ groups: userGroups });
   }
   return res.json({ groups: store.groups });

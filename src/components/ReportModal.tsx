@@ -25,12 +25,12 @@ interface ReportModalProps {
 }
 
 const REPORT_REASONS = [
-  { id: "harassment", label: "Harassment or Bullying", desc: "Insults, threats, or repetitive unwanted behavior" },
-  { id: "inappropriate", label: "Inappropriate / Explicit Content", desc: "NSFW media, adult content, or inappropriate media" },
-  { id: "spam_scam", label: "Spam, Scams, or Phishing", desc: "Fraudulent links, ads, or unsolicited promotional messages" },
-  { id: "hate_speech", label: "Hate Speech & Discrimination", desc: "Attacks based on identity, racism, or severe hostility" },
-  { id: "violence_threat", label: "Violence or Threats", desc: "Direct threats of harm or encouraging violent acts" },
-  { id: "other", label: "Other / Custom Reason", desc: "Write specific handwritten details below" }
+  { id: "harassment", label: "Harcèlement ou intimidation", desc: "Insultes, menaces ou comportements répétitifs indésirables" },
+  { id: "inappropriate", label: "Contenu inapproprié / explicite", desc: "Médias pour adultes, contenus choquants ou inappropriés" },
+  { id: "spam_scam", label: "Spam, arnaques ou hameçonnage", desc: "Liens frauduleux, publicités abusives ou messages non sollicités" },
+  { id: "hate_speech", label: "Discours de haine & discrimination", desc: "Attaques fondées sur l'identité, racisme ou hostilité grave" },
+  { id: "violence_threat", label: "Violence ou menaces", desc: "Menaces directes de violences ou incitation à des actes violents" },
+  { id: "other", label: "Autre / Motif personnalisé", desc: "Décrivez les détails précis dans le champ ci-dessous" }
 ];
 
 export const ReportModal: React.FC<ReportModalProps> = ({
@@ -57,10 +57,10 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   };
 
   const getTargetTitle = () => {
-    if (targetType === "user") return `@${targetUser?.username || "Unknown User"}`;
-    if (targetType === "message") return `Message from @${targetMessage?.senderName || "User"}`;
-    if (targetType === "group") return `Group "${targetGroup?.name || "Community"}"`;
-    return "Report Subject";
+    if (targetType === "user") return `@${targetUser?.username || "Utilisateur inconnu"}`;
+    if (targetType === "message") return `Message de @${targetMessage?.senderName || "Utilisateur"}`;
+    if (targetType === "group") return `Groupe "${targetGroup?.name || "Communauté"}"`;
+    return "Sujet du signalement";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,12 +69,12 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
     const targetId = getTargetId();
     if (!targetId) {
-      setError("Unable to identify the report target.");
+      setError("Impossible d'identifier la cible du signalement.");
       return;
     }
 
-    if (selectedReason === "Other / Custom Reason" && !customExplanation.trim()) {
-      setError("Please describe the issue in the custom explanation box.");
+    if (selectedReason.includes("Autre") && !customExplanation.trim()) {
+      setError("Veuillez décrire le problème dans le champ d'explication.");
       return;
     }
 
@@ -106,7 +106,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to submit report");
+        throw new Error(data.error || "Échec de l'envoi du signalement");
       }
 
       const data = await res.json();
@@ -118,7 +118,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         onClose();
       }, 1800);
     } catch (err: any) {
-      setError(err.message || "An error occurred while transmitting the report.");
+      setError(err.message || "Une erreur est survenue lors de l'envoi du signalement.");
     } finally {
       setSubmitting(false);
     }
@@ -141,20 +141,20 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-semibold text-white flex items-center space-x-1.5">
-                <span>Submit Safety Report</span>
+                <span>Signaler un contenu</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-medium uppercase tracking-wider">
-                  {targetType}
+                  {targetType === "user" ? "Utilisateur" : targetType === "message" ? "Message" : "Groupe"}
                 </span>
               </h3>
               <p className="text-xs text-slate-400">
-                Help keep the MK Wavegram community safe, secure, and respectful
+                Aidez à maintenir la communauté MK Wavegram sûre et respectueuse
               </p>
             </div>
           </div>
           <button
             id="report-close-btn"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -166,9 +166,9 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 animate-bounce">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h4 className="text-lg font-bold text-white">Report Successfully Transmitted</h4>
+            <h4 className="text-lg font-bold text-white">Signalement envoyé avec succès</h4>
             <p className="text-sm text-slate-300 max-w-xs leading-relaxed">
-              Your signal has been securely sent to the MK Administrator with complete context. The admin moderation team will review it shortly.
+              Votre signal a été transmis de façon sécurisée à l'administrateur MK. L'équipe de modération l'examinera dans les plus brefs délais.
             </p>
           </div>
         ) : (
@@ -194,7 +194,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               )}
 
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Report Target</div>
+                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Cible du signalement</div>
                 <div className="text-sm font-semibold text-white truncate">{getTargetTitle()}</div>
                 {targetMessage?.text && (
                   <div className="text-xs text-slate-400 truncate italic mt-0.5">
@@ -207,7 +207,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             {/* Select Reason */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Reason for Report <span className="text-red-400">*</span>
+                Motif du signalement <span className="text-red-400">*</span>
               </label>
               <div className="grid grid-cols-1 gap-2">
                 {REPORT_REASONS.map((r) => (
@@ -215,7 +215,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                     key={r.id}
                     type="button"
                     onClick={() => setSelectedReason(r.label)}
-                    className={`text-left p-3 rounded-xl border transition flex items-start justify-between ${
+                    className={`text-left p-3 rounded-xl border transition flex items-start justify-between cursor-pointer ${
                       selectedReason === r.label
                         ? "bg-[#3390ec]/20 border-[#3390ec] text-white"
                         : "bg-[#0e1621] border-[#242f3d] text-slate-300 hover:bg-[#1f2c3a] hover:border-slate-600"
@@ -238,13 +238,13 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             {/* Custom Explanation */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
-                <span>Additional Details & Context</span>
-                <span className="text-xs text-slate-500 font-normal">Optional / Handwritten</span>
+                <span>Détails & contexte supplémentaires</span>
+                <span className="text-xs text-slate-500 font-normal">Optionnel</span>
               </label>
               <textarea
                 value={customExplanation}
                 onChange={(e) => setCustomExplanation(e.target.value)}
-                placeholder="Explain what happened or provide additional context for the administrator..."
+                placeholder="Expliquez ce qui s'est passé ou apportez des précisions pour l'administrateur..."
                 rows={3}
                 className="w-full bg-[#0e1621] border border-[#242f3d] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#3390ec] resize-none"
               />
@@ -263,21 +263,21 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition"
+                className="px-4 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition cursor-pointer"
               >
-                Cancel
+                Annuler
               </button>
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-5 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-500 text-white flex items-center space-x-2 shadow-lg shadow-red-600/30 transition disabled:opacity-50"
+                className="px-5 py-2 rounded-xl text-sm font-medium bg-red-600 hover:bg-red-500 text-white flex items-center space-x-2 shadow-lg shadow-red-600/30 transition disabled:opacity-50 cursor-pointer"
               >
                 {submitting ? (
-                  <span>Submitting...</span>
+                  <span>Envoi en cours...</span>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Submit Report</span>
+                    <span>Envoyer le signalement</span>
                   </>
                 )}
               </button>
