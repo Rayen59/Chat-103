@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { User, UserReport, Message, Conversation, Group } from "../types";
+import { User, UserReport, Message, Conversation } from "../types";
 import {
   ShieldCheck,
   X,
   AlertTriangle,
-  Flame,
   CheckCircle2,
   Clock,
   Ban,
@@ -13,21 +12,15 @@ import {
   Search,
   Sparkles,
   RefreshCw,
-  ExternalLink,
   MessageSquare,
-  FileText,
   Send,
-  Trash2,
-  Eye,
   ShieldAlert,
   Info,
-  ChevronRight,
-  Filter,
-  Lock,
+  ChevronLeft,
   KeyRound,
   Check,
-  AlertCircle,
-  MessageCircle
+  MessageCircle,
+  AlertCircle
 } from "lucide-react";
 
 interface AdminPanelModalProps {
@@ -76,7 +69,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [reportSearch, setReportSearch] = useState("");
   const [analyzingReportId, setAnalyzingReportId] = useState<string | null>(null);
 
-  // Admin Pin Auth State (in case user needs to authenticate admin access)
+  // Admin Pin Auth State
   const [authError, setAuthError] = useState<string | null>(null);
   const [adminPin, setAdminPin] = useState("");
   const [pinSubmitting, setPinSubmitting] = useState(false);
@@ -112,7 +105,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     storiesCount: number;
     totalMessages: number;
   } | null>(null);
-  const [loadingContext, setLoadingContext] = useState(false);
+  const [, setLoadingContext] = useState(false);
 
   // Broadcast Studio state
   const [broadcastTitle, setBroadcastTitle] = useState("");
@@ -122,6 +115,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
   // Users Filter
   const [userSearch, setUserSearch] = useState("");
+
+  const formatEnglishDate = (isoStr: string | undefined, includeTime = true) => {
+    if (!isoStr) return "";
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        ...(includeTime ? { hour: "numeric", minute: "2-digit", hour12: true } : {})
+      });
+    } catch {
+      return "Recent";
+    }
+  };
 
   const fetchReports = async () => {
     try {
@@ -411,34 +418,36 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   return (
     <div
       id="admin-panel-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
         id="admin-panel-container"
-        className="w-full max-w-5xl bg-[#17212b] border border-[#2b3a4a] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[88vh] text-white"
+        className="w-full max-w-5xl bg-[#17212b] border border-[#2b3a4a] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[94vh] sm:h-[88vh] text-white"
       >
-        {/* Top Bar */}
-        <div className="px-6 py-4 border-b border-[#242f3d] bg-[#0e1621] flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 flex items-center justify-center text-[#3390ec]">
-              <ShieldCheck className="w-6 h-6" />
+        {/* Header - Fully Responsive */}
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[#242f3d] bg-[#0e1621] flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 flex items-center justify-center text-[#3390ec] shrink-0">
+              <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h2 className="text-base font-bold text-white tracking-wide">
-                  MK Wavegram • Admin Moderation Panel 👑
+            <div className="min-w-0">
+              <div className="flex items-center space-x-1.5 sm:space-x-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-wide truncate">
+                  MK Admin Panel 👑
                 </h2>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-semibold uppercase tracking-wider">
+                <span className="text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold uppercase tracking-wider shrink-0">
                   Super Admin
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Connected as <span className="text-white font-medium">{currentUser.email || currentUser.username}</span> (Full Control & Trust Center)
+              <p className="text-[11px] sm:text-xs text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                <span>{currentUser.email || currentUser.username}</span>
+                <span className="text-slate-500 hidden sm:inline">• Full Moderation Access</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
             {onOpenMKChannel && (
               <button
                 id="admin-jump-channel-btn"
@@ -446,31 +455,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   onClose();
                   onOpenMKChannel();
                 }}
-                className="px-3.5 py-1.5 rounded-xl bg-[#3390ec]/15 border border-[#3390ec]/30 text-[#3390ec] hover:bg-[#3390ec]/25 text-xs font-medium flex items-center space-x-1.5 transition cursor-pointer"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#3390ec]/15 border border-[#3390ec]/30 text-[#3390ec] hover:bg-[#3390ec]/25 text-xs font-semibold flex items-center space-x-1 transition cursor-pointer"
+                title="Open MK Official Channel"
               >
                 <Radio className="w-3.5 h-3.5" />
-                <span>Open MK Channel ⚡</span>
+                <span className="hidden sm:inline">MK Channel ⚡</span>
               </button>
             )}
             <button
               id="admin-close-btn"
               onClick={onClose}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              title="Close Admin Panel"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {/* Security Unlock if Unauthorized */}
         {!isAuthorized ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              <Lock className="w-8 h-8" />
+              <ShieldAlert className="w-8 h-8" />
             </div>
             <h3 className="text-lg font-bold text-white">Admin Authentication Required</h3>
             <p className="text-xs text-slate-400 max-w-md">
-              Please enter the administrator passcode to access user reports, sanctions, and moderation controls.
+              Please enter your administrator passcode to access reports, member sanctions, and moderation controls.
             </p>
 
             <form onSubmit={handleAdminPinAuth} className="w-full max-w-sm space-y-3">
@@ -494,7 +505,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               <button
                 type="submit"
                 disabled={pinSubmitting || !adminPin.trim()}
-                className="w-full py-2.5 rounded-xl bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold transition disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
               >
                 {pinSubmitting ? "Authenticating..." : "Unlock Admin Controls"}
               </button>
@@ -502,29 +513,34 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
           </div>
         ) : (
           <>
-            {/* Navigation Tabs */}
-            <div className="px-6 border-b border-[#242f3d] bg-[#1f2c3a] flex items-center justify-between">
-              <div className="flex space-x-1">
+            {/* Horizontal Scrollable Tabs */}
+            <div className="px-3 sm:px-6 border-b border-[#242f3d] bg-[#1f2c3a] flex items-center justify-between overflow-x-auto no-scrollbar gap-2">
+              <div className="flex space-x-1 shrink-0">
                 <button
-                  onClick={() => setActiveTab("reports")}
-                  className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition flex items-center space-x-2 cursor-pointer ${
+                  onClick={() => {
+                    setActiveTab("reports");
+                  }}
+                  className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center space-x-1.5 sm:space-x-2 shrink-0 cursor-pointer ${
                     activeTab === "reports"
                       ? "border-[#3390ec] text-[#3390ec]"
                       : "border-transparent text-slate-400 hover:text-slate-200"
                   }`}
                 >
                   <ShieldAlert className="w-4 h-4" />
-                  <span>User Reports & Complaints</span>
+                  <span>Reports</span>
                   {pendingReportsCount > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[11px] flex items-center justify-center font-bold">
+                    <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
                       {pendingReportsCount}
                     </span>
                   )}
                 </button>
 
                 <button
-                  onClick={() => setActiveTab("bans")}
-                  className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition flex items-center space-x-2 cursor-pointer ${
+                  onClick={() => {
+                    setActiveTab("bans");
+                    setSelectedReport(null);
+                  }}
+                  className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center space-x-1.5 sm:space-x-2 shrink-0 cursor-pointer ${
                     activeTab === "bans"
                       ? "border-[#3390ec] text-[#3390ec]"
                       : "border-transparent text-slate-400 hover:text-slate-200"
@@ -540,47 +556,59 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </button>
 
                 <button
-                  onClick={() => setActiveTab("broadcast")}
-                  className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition flex items-center space-x-2 cursor-pointer ${
+                  onClick={() => {
+                    setActiveTab("broadcast");
+                    setSelectedReport(null);
+                  }}
+                  className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center space-x-1.5 sm:space-x-2 shrink-0 cursor-pointer ${
                     activeTab === "broadcast"
                       ? "border-[#3390ec] text-[#3390ec]"
                       : "border-transparent text-slate-400 hover:text-slate-200"
                   }`}
                 >
                   <Radio className="w-4 h-4" />
-                  <span>Broadcast Studio ⚡</span>
+                  <span>Broadcast ⚡</span>
                 </button>
 
                 <button
-                  onClick={() => setActiveTab("users")}
-                  className={`px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition flex items-center space-x-2 cursor-pointer ${
+                  onClick={() => {
+                    setActiveTab("users");
+                    setSelectedReport(null);
+                  }}
+                  className={`px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition flex items-center space-x-1.5 sm:space-x-2 shrink-0 cursor-pointer ${
                     activeTab === "users"
                       ? "border-[#3390ec] text-[#3390ec]"
                       : "border-transparent text-slate-400 hover:text-slate-200"
                   }`}
                 >
                   <Users className="w-4 h-4" />
-                  <span>Platform Users ({allUsers.length})</span>
+                  <span>Users ({allUsers.length})</span>
                 </button>
               </div>
 
               <button
                 onClick={fetchReports}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition text-xs flex items-center space-x-1 cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition text-xs flex items-center space-x-1 shrink-0 cursor-pointer"
                 title="Refresh database records"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingReports ? "animate-spin" : ""}`} />
-                <span>Refresh</span>
+                <span className="hidden sm:inline">Refresh</span>
               </button>
             </div>
 
             {/* Tab Contents */}
             <div className="flex-1 overflow-hidden flex bg-[#17212b]">
-              {/* TAB 1: REPORTS */}
+              {/* TAB 1: REPORTS (RESPONSIVE MASTER-DETAIL) */}
               {activeTab === "reports" && (
-                <div className="flex-1 flex overflow-hidden">
-                  {/* Reports List */}
-                  <div className="w-5/12 border-r border-[#242f3d] flex flex-col">
+                <div className="flex-1 flex overflow-hidden w-full">
+                  {/* Left Column: Reports List */}
+                  {/* On mobile: Hidden if a report is selected. On desktop: always visible (w-5/12). */}
+                  <div
+                    className={`${
+                      selectedReport ? "hidden md:flex" : "flex"
+                    } w-full md:w-5/12 border-r border-[#242f3d] flex-col h-full bg-[#17212b]`}
+                  >
+                    {/* Search & Filter Header */}
                     <div className="p-3 border-b border-[#242f3d] bg-[#0e1621] space-y-2">
                       <div className="relative">
                         <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -589,20 +617,20 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           value={reportSearch}
                           onChange={(e) => setReportSearch(e.target.value)}
                           placeholder="Search reports by user or keyword..."
-                          className="w-full bg-[#17212b] border border-[#242f3d] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#3390ec]"
+                          className="w-full bg-[#17212b] border border-[#242f3d] rounded-xl pl-8.5 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#3390ec]"
                         />
                       </div>
 
                       {/* Filter pills */}
-                      <div className="flex items-center gap-1 overflow-x-auto text-[11px]">
+                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
                         {(["all", "pending", "resolved", "dismissed"] as const).map((f) => (
                           <button
                             key={f}
                             onClick={() => setReportFilter(f)}
-                            className={`px-2.5 py-1 rounded-md capitalize font-semibold transition cursor-pointer shrink-0 ${
+                            className={`px-3 py-1 rounded-lg capitalize font-bold transition cursor-pointer shrink-0 text-[11px] ${
                               reportFilter === f
-                                ? "bg-[#3390ec] text-white"
-                                : "bg-[#17212b] text-slate-400 hover:text-slate-200"
+                                ? "bg-[#3390ec] text-white shadow-md shadow-[#3390ec]/30"
+                                : "bg-[#17212b] text-slate-400 hover:text-slate-200 border border-[#242f3d]"
                             }`}
                           >
                             {f === "all" ? `All (${reports.length})` : f}
@@ -611,6 +639,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       </div>
                     </div>
 
+                    {/* Report Items List */}
                     <div className="flex-1 overflow-y-auto divide-y divide-[#242f3d]">
                       {loadingReports && reports.length === 0 ? (
                         <div className="p-8 text-center text-slate-400 text-xs">
@@ -620,11 +649,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       ) : filteredReports.length === 0 ? (
                         <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center space-y-2">
                           <ShieldCheck className="w-10 h-10 text-emerald-400/60" />
-                          <div className="text-sm font-medium text-white">No Reports Matching</div>
-                          <p className="text-xs max-w-xs">
+                          <div className="text-sm font-semibold text-white">No Reports Found</div>
+                          <p className="text-xs max-w-xs text-slate-400">
                             {reports.length === 0
                               ? "There are currently no open user reports in the database."
-                              : "No reports match the selected search or filter category."}
+                              : "No reports match your search query or filter category."}
                           </p>
                         </div>
                       ) : (
@@ -645,12 +674,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               }`}
                             >
                               <div
-                                className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                                   rep.targetType === "user"
-                                    ? "bg-purple-500/20 text-purple-400"
+                                    ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
                                     : rep.targetType === "message"
-                                    ? "bg-amber-500/20 text-amber-400"
-                                    : "bg-blue-500/20 text-blue-400"
+                                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                    : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                                 }`}
                               >
                                 {rep.targetType === "user" && <Users className="w-4 h-4" />}
@@ -659,38 +688,38 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               </div>
 
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between">
-                                  <div className="text-xs font-semibold text-white truncate">
+                                <div className="flex items-center justify-between gap-1">
+                                  <div className="text-xs font-bold text-white truncate">
                                     {rep.targetName || "Report Subject"}
                                   </div>
                                   <span
-                                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${
                                       rep.status === "pending"
                                         ? "bg-red-500/20 text-red-300 border border-red-500/30 animate-pulse"
                                         : rep.status === "resolved"
-                                        ? "bg-emerald-500/20 text-emerald-300"
+                                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                                         : rep.status === "dismissed"
-                                        ? "bg-slate-500/20 text-slate-400"
-                                        : "bg-amber-500/20 text-amber-300"
+                                        ? "bg-slate-500/20 text-slate-400 border border-slate-500/30"
+                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                                     }`}
                                   >
                                     {rep.status}
                                   </span>
                                 </div>
 
-                                <div className="text-xs text-red-300 font-medium mt-0.5 truncate">
+                                <div className="text-xs text-red-400 font-semibold mt-0.5 truncate">
                                   {rep.reason}
                                 </div>
 
                                 {rep.customExplanation && (
-                                  <div className="text-xs text-slate-400 truncate italic mt-0.5">
+                                  <div className="text-[11px] text-slate-400 truncate italic mt-0.5">
                                     "{rep.customExplanation}"
                                   </div>
                                 )}
 
                                 <div className="text-[10px] text-slate-500 mt-1.5 flex items-center justify-between">
-                                  <span>By @{rep.reporterName}</span>
-                                  <span>{new Date(rep.createdAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                                  <span className="truncate">By @{rep.reporterName}</span>
+                                  <span className="shrink-0">{formatEnglishDate(rep.createdAt)}</span>
                                 </div>
                               </div>
                             </div>
@@ -700,37 +729,50 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Report Detail & Moderation Action Panel */}
-                  <div className="w-7/12 flex flex-col bg-[#17212b] overflow-y-auto p-5 space-y-4">
+                  {/* Right Column: Report Detail & Actions */}
+                  {/* On mobile: Visible if report is selected. On desktop: always visible (w-7/12). */}
+                  <div
+                    className={`${
+                      selectedReport ? "flex" : "hidden md:flex"
+                    } w-full md:w-7/12 flex-col bg-[#17212b] overflow-y-auto p-4 sm:p-5 space-y-4`}
+                  >
                     {selectedReport ? (
                       <>
-                        <div className="flex items-start justify-between border-b border-[#242f3d] pb-3">
-                          <div>
-                            <div className="text-[11px] uppercase tracking-wider font-bold text-[#3390ec] flex items-center gap-1.5">
-                              <span>Report ID: #{selectedReport.id.slice(-8)}</span>
-                              <span className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-slate-300 uppercase">
-                                {selectedReport.targetType}
-                              </span>
-                            </div>
-                            <h3 className="text-base font-bold text-white mt-1">
-                              {selectedReport.targetName || "Target Subject"}
-                            </h3>
-                            <div className="text-xs text-slate-400">
-                              Reported by <span className="text-slate-200 font-medium">@{selectedReport.reporterName}</span> on {new Date(selectedReport.createdAt).toLocaleString()}
+                        {/* Mobile Back Button & Actions Bar */}
+                        <div className="flex items-center justify-between border-b border-[#242f3d] pb-3 gap-2 flex-wrap">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => setSelectedReport(null)}
+                              className="md:hidden px-2.5 py-1.5 rounded-xl bg-[#242f3d] hover:bg-[#2e3c4e] text-slate-200 text-xs font-bold flex items-center space-x-1 transition cursor-pointer"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                              <span>Back</span>
+                            </button>
+
+                            <div>
+                              <div className="text-[11px] uppercase tracking-wider font-bold text-[#3390ec] flex items-center gap-1.5">
+                                <span>Report #{selectedReport.id.slice(-8)}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-slate-300 uppercase font-bold">
+                                  {selectedReport.targetType}
+                                </span>
+                              </div>
+                              <h3 className="text-sm sm:text-base font-bold text-white mt-0.5">
+                                {selectedReport.targetName || "Target Subject"}
+                              </h3>
                             </div>
                           </div>
 
-                          <div className="flex space-x-2">
+                          <div className="flex items-center space-x-1.5 shrink-0">
                             <button
                               onClick={() => handleResolveReport(selectedReport.id, "resolved")}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1 transition cursor-pointer"
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center space-x-1 transition cursor-pointer shadow-md shadow-emerald-600/20"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>Resolve</span>
                             </button>
                             <button
                               onClick={() => handleResolveReport(selectedReport.id, "dismissed")}
-                              className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold flex items-center space-x-1 transition cursor-pointer"
+                              className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold flex items-center space-x-1 transition cursor-pointer"
                             >
                               <X className="w-3.5 h-3.5" />
                               <span>Dismiss</span>
@@ -738,16 +780,29 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Report Information Details */}
-                        <div className="bg-[#0e1621] border border-[#242f3d] rounded-xl p-3.5 space-y-2.5 text-xs">
+                        {/* Report Information Summary */}
+                        <div className="bg-[#0e1621] border border-[#242f3d] rounded-xl p-3.5 space-y-2 text-xs">
+                          <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                            <span>
+                              Reporter: <strong className="text-white">@{selectedReport.reporterName}</strong>
+                            </span>
+                            <span>{formatEnglishDate(selectedReport.createdAt)}</span>
+                          </div>
+
                           <div>
-                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Flagged Category:</span>
-                            <div className="text-sm font-bold text-red-400">{selectedReport.reason}</div>
+                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                              Flagged Reason:
+                            </span>
+                            <div className="text-xs sm:text-sm font-bold text-red-400 mt-0.5">
+                              {selectedReport.reason}
+                            </div>
                           </div>
 
                           {selectedReport.customExplanation && (
                             <div>
-                              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Reporter Explanation:</span>
+                              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                                Reporter's Explanation:
+                              </span>
                               <div className="text-xs text-slate-200 mt-1 bg-[#17212b] p-2.5 rounded-lg border border-[#242f3d] whitespace-pre-wrap">
                                 "{selectedReport.customExplanation}"
                               </div>
@@ -756,7 +811,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                           {selectedReport.targetDetails?.messageText && (
                             <div>
-                              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Flagged Message Content:</span>
+                              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                                Flagged Message Excerpt:
+                              </span>
                               <div className="text-xs text-amber-200 mt-1 bg-[#17212b] p-2.5 rounded-lg border border-amber-500/30 font-mono">
                                 "{selectedReport.targetDetails.messageText}"
                               </div>
@@ -764,25 +821,25 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           )}
                         </div>
 
-                        {/* Direct Reply to Reporter Section */}
+                        {/* Official Response Composer */}
                         <div className="bg-[#0e1621] border border-[#3390ec]/30 rounded-xl p-3.5 space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-1.5 text-xs font-bold text-[#3390ec]">
                               <MessageCircle className="w-4 h-4" />
-                              <span>Official Response to Reporter (@{selectedReport.reporterName})</span>
+                              <span>Official Response to @{selectedReport.reporterName}</span>
                             </div>
                             {replySuccess && (
-                              <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold">
+                              <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-bold">
                                 <Check className="w-3.5 h-3.5" />
-                                <span>Response Sent!</span>
+                                <span>Sent & Resolved!</span>
                               </span>
                             )}
                           </div>
 
-                          {/* Quick Reply Presets */}
+                          {/* Quick Reply Templates */}
                           <div className="space-y-1">
-                            <span className="text-[10px] text-slate-400 uppercase font-semibold">Quick Templates:</span>
-                            <div className="grid grid-cols-2 gap-1.5">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold">Quick Templates:</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                               {QUICK_REPLIES.map((qr, idx) => (
                                 <button
                                   key={idx}
@@ -791,7 +848,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                     setReplyText(qr.text);
                                     setActionTakenText(qr.action);
                                   }}
-                                  className="p-1.5 text-left bg-[#17212b] hover:bg-[#1f2c3a] border border-[#242f3d] hover:border-[#3390ec] rounded-lg text-[11px] text-slate-300 transition truncate cursor-pointer"
+                                  className="p-2 text-left bg-[#17212b] hover:bg-[#1f2c3a] border border-[#242f3d] hover:border-[#3390ec] rounded-lg text-[11px] text-slate-300 transition truncate cursor-pointer"
                                 >
                                   {qr.title}
                                 </button>
@@ -799,32 +856,32 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             </div>
                           </div>
 
-                          <form onSubmit={handleSendAdminReply} className="space-y-2">
+                          <form onSubmit={handleSendAdminReply} className="space-y-2.5">
                             <div>
                               <textarea
                                 value={replyText}
                                 onChange={(e) => setReplyText(e.target.value)}
-                                placeholder="Type your official response that will be visible to the reporter in their reports dashboard..."
+                                placeholder="Type the official message that the reporter will see in their reports dashboard..."
                                 rows={3}
                                 className="w-full bg-[#17212b] border border-[#242f3d] rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#3390ec] resize-none"
                               />
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                               <input
                                 type="text"
                                 value={actionTakenText}
                                 onChange={(e) => setActionTakenText(e.target.value)}
-                                placeholder="Action summary (e.g. Warning Issued, 7-Day Suspension)"
-                                className="flex-1 bg-[#17212b] border border-[#242f3d] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#3390ec]"
+                                placeholder="Action summary (e.g. Warning Issued, 7-Day Ban)"
+                                className="flex-1 bg-[#17212b] border border-[#242f3d] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#3390ec]"
                               />
                               <button
                                 type="submit"
                                 disabled={submittingReply || !replyText.trim()}
-                                className="px-4 py-1.5 bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+                                className="px-4 py-2 bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition disabled:opacity-50 cursor-pointer shadow-md shadow-[#3390ec]/20 shrink-0"
                               >
                                 <Send className="w-3.5 h-3.5" />
-                                <span>{submittingReply ? "Sending..." : "Send & Resolve"}</span>
+                                <span>{submittingReply ? "Sending..." : "Send Response & Resolve"}</span>
                               </button>
                             </div>
                           </form>
@@ -840,7 +897,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             <button
                               onClick={() => handleRunAiAnalysis(selectedReport.id)}
                               disabled={analyzingReportId === selectedReport.id}
-                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold flex items-center space-x-1 transition disabled:opacity-50 cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold flex items-center space-x-1 transition disabled:opacity-50 cursor-pointer"
                             >
                               <Sparkles className="w-3 h-3" />
                               <span>{analyzingReportId === selectedReport.id ? "Analyzing..." : "Run AI Assessment"}</span>
@@ -889,7 +946,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                         {/* Quick Disciplinary Actions */}
                         <div className="space-y-2">
-                          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                          <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
                             Disciplinary & Investigation Tools
                           </div>
 
@@ -903,7 +960,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                       name: selectedReport.targetDetails?.username || "User"
                                     });
                                   }}
-                                  className="p-2 rounded-xl bg-amber-600/20 border border-amber-500/40 hover:bg-amber-600/30 text-amber-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                                  className="p-2.5 rounded-xl bg-amber-600/20 border border-amber-500/40 hover:bg-amber-600/30 text-amber-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition cursor-pointer"
                                 >
                                   <AlertTriangle className="w-3.5 h-3.5" />
                                   <span>Issue Warning</span>
@@ -916,7 +973,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                       name: selectedReport.targetDetails?.username || "User"
                                     });
                                   }}
-                                  className="p-2 rounded-xl bg-red-600/20 border border-red-500/40 hover:bg-red-600/30 text-red-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                                  className="p-2.5 rounded-xl bg-red-600/20 border border-red-500/40 hover:bg-red-600/30 text-red-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition cursor-pointer"
                                 >
                                   <Ban className="w-3.5 h-3.5" />
                                   <span>Ban / Suspend</span>
@@ -924,10 +981,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                                 <button
                                   onClick={() => handleInspectUserActivity(selectedReport.targetDetails!.userId!)}
-                                  className="p-2 rounded-xl bg-purple-500/20 border border-purple-500/40 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                                  className="p-2.5 rounded-xl bg-purple-500/20 border border-purple-500/40 hover:bg-purple-500/30 text-purple-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition cursor-pointer"
                                 >
                                   <Users className="w-3.5 h-3.5" />
-                                  <span>Inspect Profile</span>
+                                  <span>Inspect User</span>
                                 </button>
                               </>
                             )}
@@ -935,7 +992,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             {selectedReport.targetType === "message" && selectedReport.targetId && (
                               <button
                                 onClick={() => handleInspectMessageContext(selectedReport.targetId)}
-                                className="p-2 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 hover:bg-[#3390ec]/30 text-[#3390ec] text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                                className="p-2.5 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 hover:bg-[#3390ec]/30 text-[#3390ec] text-xs font-bold flex items-center justify-center space-x-1.5 transition cursor-pointer"
                               >
                                 <MessageSquare className="w-3.5 h-3.5" />
                                 <span>Inspect Context</span>
@@ -966,7 +1023,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                                 >
                                   <div className="flex items-center justify-between text-[10px] text-slate-400">
                                     <span className="font-semibold text-slate-200">{m.senderName}</span>
-                                    <span>{new Date(m.createdAt).toLocaleTimeString()}</span>
+                                    <span>{formatEnglishDate(m.createdAt)}</span>
                                   </div>
                                   <div className="text-slate-200 mt-0.5">{m.text}</div>
                                 </div>
@@ -1008,8 +1065,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 py-16">
                         <Info className="w-8 h-8 opacity-40" />
-                        <span className="text-xs text-center max-w-xs">
-                          Select a report from the list on the left to review details, respond to the user, and take moderation action.
+                        <span className="text-xs text-center max-w-xs text-slate-400">
+                          Select a report from the list on the left to review details, respond to the reporter, and enforce moderation actions.
                         </span>
                       </div>
                     )}
@@ -1019,15 +1076,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               {/* TAB 2: ACTIVE BANS */}
               {activeTab === "bans" && (
-                <div className="flex-1 p-6 overflow-y-auto space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
                       <h3 className="text-base font-bold text-white">Active Sanctions & Suspended Accounts</h3>
                       <p className="text-xs text-slate-400">
-                        Banned accounts cannot log in, message, or participate until their suspension expires.
+                        Suspended accounts cannot log in, message, or participate until their sanction expires.
                       </p>
                     </div>
-                    <span className="text-xs px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-300 font-semibold">
+                    <span className="text-xs px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-300 font-bold">
                       {bannedUsers.length} Suspended Accounts
                     </span>
                   </div>
@@ -1035,7 +1092,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   {bannedUsers.length === 0 ? (
                     <div className="p-16 text-center text-slate-400 bg-[#0e1621] rounded-2xl border border-[#242f3d] flex flex-col items-center justify-center space-y-2">
                       <CheckCircle2 className="w-10 h-10 text-emerald-400" />
-                      <h4 className="text-sm font-semibold text-white">No Accounts Currently Suspended</h4>
+                      <h4 className="text-sm font-bold text-white">No Accounts Currently Suspended</h4>
                       <p className="text-xs max-w-sm text-slate-400">
                         All registered users are in good standing without active disciplinary sanctions.
                       </p>
@@ -1079,7 +1136,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             {u.bannedUntil && u.bannedUntil !== "permanent" && (
                               <div className="text-amber-300 flex items-center space-x-1">
                                 <Clock className="w-3.5 h-3.5" />
-                                <span>Expires: {new Date(u.bannedUntil).toLocaleString()}</span>
+                                <span>Expires: {formatEnglishDate(u.bannedUntil)}</span>
                               </div>
                             )}
                           </div>
@@ -1087,7 +1144,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           <div className="flex justify-end pt-1">
                             <button
                               onClick={() => handleUnbanUser(u.id)}
-                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-600 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-600 hover:text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
                               <span>Lift Ban & Restore Access</span>
@@ -1102,14 +1159,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               {/* TAB 3: BROADCAST STUDIO */}
               {activeTab === "broadcast" && (
-                <div className="flex-1 p-8 overflow-y-auto max-w-2xl mx-auto space-y-6">
-                  <div className="border-b border-[#242f3d] pb-4 flex items-start justify-between">
+                <div className="flex-1 p-4 sm:p-8 overflow-y-auto max-w-2xl mx-auto space-y-6">
+                  <div className="border-b border-[#242f3d] pb-4 flex items-start justify-between flex-wrap gap-2">
                     <div>
                       <div className="flex items-center space-x-2 text-[#3390ec] text-xs font-bold uppercase tracking-wider">
                         <Radio className="w-4 h-4" />
                         <span>MK Official Broadcast Engine ⚡</span>
                       </div>
-                      <h3 className="text-xl font-bold text-white mt-1">Push Broadcast to All Users</h3>
+                      <h3 className="text-lg sm:text-xl font-bold text-white mt-1">Push Broadcast to All Users</h3>
                       <p className="text-xs text-slate-400 mt-1">
                         Send real-time alerts or platform notices to all users via the pinned MK Official Channel.
                       </p>
@@ -1122,7 +1179,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           onClose();
                           onOpenMKChannel();
                         }}
-                        className="px-3.5 py-2 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 hover:bg-[#3390ec]/30 text-[#3390ec] text-xs font-semibold flex items-center space-x-1.5 transition shrink-0 cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-[#3390ec]/20 border border-[#3390ec]/40 hover:bg-[#3390ec]/30 text-[#3390ec] text-xs font-bold flex items-center space-x-1.5 transition shrink-0 cursor-pointer"
                       >
                         <MessageSquare className="w-4 h-4" />
                         <span>Open Channel in Chat</span>
@@ -1139,7 +1196,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                   <form onSubmit={handleSendBroadcast} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                         Announcement Headline
                       </label>
                       <input
@@ -1152,7 +1209,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                         Broadcast Message Body <span className="text-red-400">*</span>
                       </label>
                       <textarea
@@ -1165,7 +1222,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       />
                     </div>
 
-                    <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center justify-between pt-2 flex-wrap gap-3">
                       <div className="flex items-center space-x-2">
                         <span className="text-xs text-slate-400 font-medium">Priority:</span>
                         {(["normal", "high", "urgent"] as const).map((p) => (
@@ -1173,7 +1230,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             key={p}
                             type="button"
                             onClick={() => setBroadcastPriority(p)}
-                            className={`text-xs px-3 py-1 rounded-lg font-semibold uppercase transition cursor-pointer ${
+                            className={`text-xs px-3 py-1 rounded-lg font-bold uppercase transition cursor-pointer ${
                               broadcastPriority === p
                                 ? p === "urgent"
                                   ? "bg-red-600 text-white"
@@ -1189,7 +1246,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       <button
                         type="submit"
                         disabled={actionLoading || !broadcastMessage.trim()}
-                        className="px-6 py-2.5 rounded-xl bg-[#3390ec] hover:bg-[#2880db] text-white font-semibold text-sm flex items-center space-x-2 shadow-lg shadow-[#3390ec]/30 transition disabled:opacity-50 cursor-pointer"
+                        className="px-6 py-2.5 rounded-xl bg-[#3390ec] hover:bg-[#2880db] text-white font-bold text-sm flex items-center space-x-2 shadow-lg shadow-[#3390ec]/30 transition disabled:opacity-50 cursor-pointer"
                       >
                         <Send className="w-4 h-4" />
                         <span>{actionLoading ? "Pushing..." : "Push Broadcast ⚡"}</span>
@@ -1201,8 +1258,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
               {/* TAB 4: USERS DIRECTORY */}
               {activeTab === "users" && (
-                <div className="flex-1 p-6 overflow-hidden flex flex-col space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="flex-1 p-4 sm:p-6 overflow-hidden flex flex-col space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="relative flex-1 max-w-md">
                       <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
@@ -1224,47 +1281,47 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           u.email.toLowerCase().includes(userSearch.toLowerCase())
                       )
                       .map((u) => (
-                        <div key={u.id} className="p-3.5 flex items-center justify-between hover:bg-[#17212b] transition">
-                          <div className="flex items-center space-x-3">
-                            <img src={u.avatar} alt={u.username} className="w-9 h-9 rounded-full object-cover" />
-                            <div>
-                              <div className="flex items-center space-x-2">
-                                <span className="text-sm font-semibold text-white">{u.username}</span>
+                        <div key={u.id} className="p-3.5 flex items-center justify-between hover:bg-[#17212b] transition flex-wrap gap-2">
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <img src={u.avatar} alt={u.username} className="w-9 h-9 rounded-full object-cover shrink-0" />
+                            <div className="min-w-0">
+                              <div className="flex items-center space-x-2 flex-wrap">
+                                <span className="text-sm font-bold text-white truncate">{u.username}</span>
                                 {u.role === "admin" && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold uppercase">
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold uppercase shrink-0">
                                     Admin
                                   </span>
                                 )}
                                 {u.isBanned && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 font-bold uppercase">
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 font-bold uppercase shrink-0">
                                     Banned
                                   </span>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-400">{u.email}</div>
+                              <div className="text-xs text-slate-400 truncate">{u.email}</div>
                             </div>
                           </div>
 
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 shrink-0">
                             {u.role !== "admin" && (
                               <>
                                 <button
                                   onClick={() => setWarningUser({ id: u.id, name: u.username })}
-                                  className="px-3 py-1 rounded-lg bg-amber-600/20 text-amber-300 text-xs font-semibold hover:bg-amber-600 hover:text-white transition cursor-pointer"
+                                  className="px-3 py-1 rounded-lg bg-amber-600/20 text-amber-300 text-xs font-bold hover:bg-amber-600 hover:text-white transition cursor-pointer"
                                 >
                                   Warn
                                 </button>
                                 {u.isBanned ? (
                                   <button
                                     onClick={() => handleUnbanUser(u.id)}
-                                    className="px-3 py-1 rounded-lg bg-emerald-600/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-600 hover:text-white transition cursor-pointer"
+                                    className="px-3 py-1 rounded-lg bg-emerald-600/20 text-emerald-400 text-xs font-bold hover:bg-emerald-600 hover:text-white transition cursor-pointer"
                                   >
                                     Unban
                                   </button>
                                 ) : (
                                   <button
                                     onClick={() => setBanningUser({ id: u.id, name: u.username })}
-                                    className="px-3 py-1 rounded-lg bg-red-600/20 text-red-400 text-xs font-semibold hover:bg-red-600 hover:text-white transition cursor-pointer"
+                                    className="px-3 py-1 rounded-lg bg-red-600/20 text-red-400 text-xs font-bold hover:bg-red-600 hover:text-white transition cursor-pointer"
                                   >
                                     Ban
                                   </button>
@@ -1302,7 +1359,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               ) : (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                       Warning Notice Reason
                     </label>
                     <textarea
@@ -1352,7 +1409,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
                   Suspension Duration
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -1367,9 +1424,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       key={d.id}
                       type="button"
                       onClick={() => setBanDuration(d.id as any)}
-                      className={`p-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                      className={`p-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
                         banDuration === d.id
-                          ? "bg-red-600 border-red-500 text-white"
+                          ? "bg-red-600 border-red-500 text-white shadow-md shadow-red-600/30"
                           : "bg-[#0e1621] border-[#242f3d] text-slate-300 hover:bg-[#1f2c3a]"
                       }`}
                     >
@@ -1380,7 +1437,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
                   Reason for Suspension (Visible to User)
                 </label>
                 <textarea

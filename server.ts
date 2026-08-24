@@ -217,7 +217,7 @@ function ensureOfficialEntities() {
     officialGroup = {
       id: "group_mk_official",
       name: "MK Official ⚡",
-      description: "Canal officiel d'annonces et d'actualités MK Wavegram. Épinglé pour tous les utilisateurs.",
+      description: "Official MK Wavegram announcement & security updates channel. Pinned for all users.",
       avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=MKOfficialChannel&backgroundColor=3390ec,0e1621",
       creatorId: "user_admin_mk",
       adminIds: ["user_admin_mk"],
@@ -232,7 +232,7 @@ function ensureOfficialEntities() {
     store.groups.unshift(officialGroup);
   } else {
     officialGroup.name = "MK Official ⚡";
-    officialGroup.description = "Canal officiel d'annonces et d'actualités MK Wavegram. Épinglé pour tous les utilisateurs.";
+    officialGroup.description = "Official MK Wavegram announcement & security updates channel. Pinned for all users.";
     officialGroup.avatar = officialGroup.avatar || "https://api.dicebear.com/7.x/bottts/svg?seed=MKOfficialChannel&backgroundColor=3390ec,0e1621";
     officialGroup.announcementMode = true;
     officialGroup.creatorId = "user_admin_mk";
@@ -257,7 +257,7 @@ function ensureOfficialEntities() {
       groupId: "group_mk_official",
       isOfficialChannel: true,
       lastMessage: {
-        text: "⚡ Bienvenue sur MK Wavegram ! Suivez ici les annonces et alertes de sécurité officielles.",
+        text: "⚡ Welcome to MK Wavegram! Follow official platform announcements and safety alerts here.",
         senderId: "user_admin_mk",
         senderName: "MK Admin 👑",
         createdAt: new Date().toISOString()
@@ -283,7 +283,7 @@ function ensureOfficialEntities() {
       senderId: "user_admin_mk",
       senderName: "MK Admin 👑",
       senderAvatar: ADMIN_USER.avatar,
-      text: "⚡ **Bienvenue sur le canal officiel MK Wavegram !**\n\nCe canal est dédié aux annonces officielles, alertes de sécurité et nouveautés de la plateforme.\n\n🛡️ *Sécurité & Modération* : Vos discussions privées sont sécurisées et un système de signalement en direct est à votre disposition.",
+      text: "⚡ **Welcome to the official MK Wavegram channel!**\n\nThis channel is dedicated to official announcements, security notices, and feature releases.\n\n🛡️ *Safety & Moderation*: Your private chats are protected and a direct reporting system is active across the platform.",
       type: "text",
       reactions: { "⚡": ["user_admin_mk"], "🚀": ["user_alex"] },
       likes: [],
