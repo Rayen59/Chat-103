@@ -66,14 +66,13 @@ jobs:
                 webSettings.setJavaScriptEnabled(true);
                 webSettings.setDomStorageEnabled(true);
                 webView.setWebViewClient(new WebViewClient());
-                // الرابط الخاص بك على فيرسل
                 webView.loadUrl("https://chat-103.vercel.app");
                 setContentView(webView);
             }
         }
         EOF
 
-        # ملفات بناء Gradle
+        # إعدادات Gradle السليمة
         echo "include(':app')" > myapp/settings.gradle
         
         cat << 'EOF' > myapp/build.gradle
@@ -89,8 +88,7 @@ jobs:
         allprojects {
             repositories {
                 google()
-                mavenCentral()
-            }
+                mavenCentral}
         }
         EOF
 
@@ -113,15 +111,14 @@ jobs:
 
         echo "sdk.dir=$ANDROID_HOME" > myapp/local.properties
 
-    - name: Build APK
-      working-directory: ./myapp
-      run: |
-        gradle wrapper
-        ./gradlew assembleDebug
+    - name: Build APK with Gradle CLI
+      uses: gradle/gradle-build-action@v3
+      with:
+        arguments: assembleDebug
+        build-root-directory: myapp
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: chat103-apk
         path: myapp/app/build/outputs/apk/debug/app-debug.apk
-        
