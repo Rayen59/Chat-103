@@ -34,6 +34,8 @@ interface AdminPanelModalProps {
   onClose: () => void;
   onOpenMKChannel?: () => void;
   onUserUpdated?: (user: User) => void;
+  onOpenConversation?: (conversationId: string, messageId?: string) => void;
+  onOpenGroup?: (groupId: string) => void;
 }
 
 interface JudicialCaseData {
@@ -96,7 +98,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   allUsers,
   onClose,
   onOpenMKChannel,
-  onUserUpdated
+  onUserUpdated,
+  onOpenConversation,
+  onOpenGroup
 }) => {
   const [activeTab, setActiveTab] = useState<"reports" | "judicial" | "bans" | "broadcast" | "users">("reports");
   const [reports, setReports] = useState<UserReport[]>([]);
@@ -603,7 +607,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               <div>
                 <h3 className="text-lg font-bold text-white">Admin Security Verification</h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Enter your MK Master Admin Passcode (e.g. <code className="text-amber-300 font-mono">1234</code> or <code className="text-amber-300 font-mono">admin</code>) to unlock judicial authority.
+                  Enter your secure Master Administrator passkey to unlock judicial and moderation authority.
                 </p>
               </div>
 
@@ -618,7 +622,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   type="password"
                   value={adminPin}
                   onChange={(e) => setAdminPin(e.target.value)}
-                  placeholder="Enter Admin PIN / Passcode..."
+                  placeholder="Enter secure Admin Passkey..."
                   className="w-full bg-[#17212b] border border-[#242f3d] rounded-xl px-4 py-2.5 text-center text-base tracking-widest text-white placeholder-slate-500 focus:outline-none focus:border-[#3390ec]"
                   autoFocus
                 />
@@ -899,7 +903,45 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             </div>
                           </div>
 
-                          <div className="flex items-center space-x-1.5 shrink-0">
+                          <div className="flex items-center space-x-1.5 shrink-0 flex-wrap gap-1.5">
+                            {/* Direct Action: Enter Conversation */}
+                            {((selectedReport.targetDetails?.conversationId) || selectedReport.targetType === "message") && onOpenConversation && (
+                              <button
+                                onClick={() => {
+                                  const convId = selectedReport.targetDetails?.conversationId || (selectedReport.targetType === "message" ? selectedReport.targetId : undefined);
+                                  if (convId) {
+                                    onOpenConversation(convId, selectedReport.targetId);
+                                  } else {
+                                    handleOpenJudicialInvestigation(selectedReport);
+                                  }
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-md shadow-[#3390ec]/20"
+                                title="Enter conversation directly"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>Enter Conversation</span>
+                              </button>
+                            )}
+
+                            {/* Direct Action: Enter Group */}
+                            {((selectedReport.targetDetails?.groupId) || selectedReport.targetType === "group") && onOpenGroup && (
+                              <button
+                                onClick={() => {
+                                  const grpId = selectedReport.targetDetails?.groupId || (selectedReport.targetType === "group" ? selectedReport.targetId : undefined);
+                                  if (grpId) {
+                                    onOpenGroup(grpId);
+                                  } else {
+                                    handleOpenJudicialInvestigation(selectedReport);
+                                  }
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-md shadow-indigo-600/20"
+                                title="Enter group chat directly"
+                              >
+                                <Users className="w-3.5 h-3.5" />
+                                <span>Enter Group</span>
+                              </button>
+                            )}
+
                             <button
                               onClick={() => handleOpenJudicialInvestigation(selectedReport)}
                               className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-lg shadow-amber-500/20"
@@ -938,13 +980,42 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               </div>
                             </div>
                           </div>
-                          <button
-                            onClick={() => handleOpenJudicialInvestigation(selectedReport)}
-                            className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black text-xs font-bold flex items-center space-x-1 transition cursor-pointer"
-                          >
-                            <span>Enter Case Room</span>
-                            <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            {/* Fast Direct Entry Buttons */}
+                            {((selectedReport.targetDetails?.conversationId) || selectedReport.targetType === "message") && onOpenConversation && (
+                              <button
+                                onClick={() => {
+                                  const convId = selectedReport.targetDetails?.conversationId || (selectedReport.targetType === "message" ? selectedReport.targetId : undefined);
+                                  if (convId) onOpenConversation(convId, selectedReport.targetId);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold flex items-center space-x-1 transition cursor-pointer shadow-sm"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>Open in Chat</span>
+                              </button>
+                            )}
+
+                            {((selectedReport.targetDetails?.groupId) || selectedReport.targetType === "group") && onOpenGroup && (
+                              <button
+                                onClick={() => {
+                                  const grpId = selectedReport.targetDetails?.groupId || (selectedReport.targetType === "group" ? selectedReport.targetId : undefined);
+                                  if (grpId) onOpenGroup(grpId);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center space-x-1 transition cursor-pointer shadow-sm"
+                              >
+                                <Users className="w-3.5 h-3.5" />
+                                <span>Open Group</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => handleOpenJudicialInvestigation(selectedReport)}
+                              className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-black text-xs font-bold flex items-center space-x-1 transition cursor-pointer"
+                            >
+                              <span>Enter Case Room</span>
+                              <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Report Information Summary */}
@@ -1217,8 +1288,32 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           </div>
 
                           <div className="flex items-center space-x-2">
+                            {/* Direct Open in Main Chat */}
+                            {judicialCase.conversation?.id && onOpenConversation && (
+                              <button
+                                onClick={() => onOpenConversation(judicialCase.conversation!.id, judicialCase.flaggedMessageId || undefined)}
+                                className="px-3 py-1.5 rounded-lg bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-sm"
+                                title="Open this conversation in the main chat room"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>Open in Main Chat</span>
+                              </button>
+                            )}
+
+                            {/* Direct Open Group */}
+                            {judicialCase.group?.id && onOpenGroup && (
+                              <button
+                                onClick={() => onOpenGroup(judicialCase.group!.id)}
+                                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-sm"
+                                title="Open this group in the main chat room"
+                              >
+                                <Users className="w-3.5 h-3.5" />
+                                <span>Open Group Chat</span>
+                              </button>
+                            )}
+
                             {/* Search within transcript */}
-                            <div className="relative w-40 sm:w-48">
+                            <div className="relative w-36 sm:w-44">
                               <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                               <input
                                 type="text"
@@ -1231,7 +1326,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                             <button
                               onClick={() => selectedReport && handleOpenJudicialInvestigation(selectedReport)}
-                              className="p-1.5 rounded-lg bg-[#242f3d] hover:bg-[#2e3c4e] text-slate-300 hover:text-white transition text-xs"
+                              className="p-1.5 rounded-lg bg-[#242f3d] hover:bg-[#2e3c4e] text-slate-300 hover:text-white transition text-xs cursor-pointer"
                               title="Refresh Chat Feed"
                             >
                               <RefreshCw className="w-3.5 h-3.5" />

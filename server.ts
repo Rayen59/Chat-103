@@ -3891,9 +3891,17 @@ app.post("/api/admin/reports/reply", (req: Request, res: Response) => {
 // 4c. Admin: Authenticate with Admin PIN
 app.post("/api/admin/auth-pin", (req: Request, res: Response) => {
   const { pin, userId } = req.body;
-  const validPins = ["adminadmin12", "admin123", "mk2025", "admin", "admin@gmail.com"];
-  if (!pin || !validPins.includes((pin as string).trim().toLowerCase())) {
-    return res.status(401).json({ error: "Invalid Admin Passcode. Default PIN is 'admin123' or 'adminadmin12'." });
+  const envPin = process.env.ADMIN_PASSCODE ? [process.env.ADMIN_PASSCODE.trim()] : [];
+  const validPins = [
+    "dhdhdv.xbb",
+    "WaveGram-Admin#8942!xK9",
+    "MK#MasterAdmin.2025$Sec",
+    ...envPin
+  ];
+
+  const submittedPin = (pin as string || "").trim();
+  if (!submittedPin || !validPins.includes(submittedPin)) {
+    return res.status(401).json({ error: "Access Denied: Invalid administrator passkey." });
   }
 
   let user = store.users.find((u) => u.id === userId);

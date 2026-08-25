@@ -316,7 +316,7 @@ export default function App() {
             return {
               ...c,
               lastMessage: {
-                text: newMsg.text || (newMsg.type === "sticker" ? "Sticker animé" : "Fichier média"),
+                text: newMsg.text || (newMsg.type === "sticker" ? "Animated sticker" : "Media file"),
                 senderId: newMsg.senderId,
                 senderName: newMsg.senderName,
                 createdAt: newMsg.createdAt
@@ -336,9 +336,9 @@ export default function App() {
       const notif: AppNotification = {
         id: Math.random().toString(),
         type: "system",
-        title: "📢 Alerte Officielle MK",
+        title: "📢 Official MK Broadcast",
         senderName: "MK Official",
-        text: data.text || "Nouvelle annonce officielle reçue.",
+        text: data.text || "New official announcement received.",
         conversationId: "conv_mk_official",
         createdAt: new Date().toISOString()
       };
@@ -358,10 +358,10 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "call",
-          title: "Appel entrant",
+          title: "Incoming Call",
           senderName: call.callerName,
           senderAvatar: call.callerAvatar,
-          text: `Appel ${call.type === "video" ? "vidéo" : "audio"} entrant...`,
+          text: `Incoming ${call.type === "video" ? "video" : "audio"} call...`,
           createdAt: new Date().toISOString()
         };
         setNotifications((prev) => [...prev, notif]);
@@ -409,9 +409,9 @@ export default function App() {
       const notif: AppNotification = {
         id: Math.random().toString(),
         type: "system",
-        title: "Groupe supprimé",
-        senderName: "Système Wavegram",
-        text: "Un groupe dont vous étiez membre a été supprimé par un administrateur.",
+        title: "Group Deleted",
+        senderName: "Wavegram System",
+        text: "A group you were a member of has been removed by an administrator.",
         createdAt: new Date().toISOString()
       };
       setNotifications((prev) => [...prev, notif]);
@@ -1559,6 +1559,24 @@ export default function App() {
           onOpenMKChannel={() => {
             setShowAdminPanel(false);
             setActiveConversationId("conv_mk_official");
+            setViewMode("chat");
+            setMobileShowChat(true);
+          }}
+          onOpenConversation={(convId) => {
+            setShowAdminPanel(false);
+            setActiveConversationId(convId);
+            setViewMode("chat");
+            setMobileShowChat(true);
+          }}
+          onOpenGroup={(groupId) => {
+            setShowAdminPanel(false);
+            const targetGroup = groups.find((g) => g.id === groupId);
+            const conv = conversations.find((c) => c.groupId === groupId || c.id === targetGroup?.conversationId);
+            if (conv) {
+              setActiveConversationId(conv.id);
+            } else if (targetGroup?.conversationId) {
+              setActiveConversationId(targetGroup.conversationId);
+            }
             setViewMode("chat");
             setMobileShowChat(true);
           }}
