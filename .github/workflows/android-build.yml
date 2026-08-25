@@ -1,0 +1,127 @@
+name: Build WebView APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Create WebView Android Project
+      run: |
+        mkdir -p myapp/app/src/main/java/com/chat103/app
+        mkdir -p myapp/app/src/main/res/values
+
+        # ملف الواجهة والتطبيق الأساسي
+        cat << 'EOF' > myapp/app/src/main/AndroidManifest.xml
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.chat103.app">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <application
+                android:allowBackup="true"
+                android:label="Chat 103"
+                android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+
+        # كود الجافا لفتح رابط Vercel الخاص بك
+        cat << 'EOF' > myapp/app/src/main/java/com/chat103/app/MainActivity.java
+        package com.chat103.app;
+        import android.app.Activity;
+        import android.os.Bundle;
+        import android.webkit.WebView;
+        import android.webkit.WebViewClient;
+        import android.webkit.WebSettings;
+
+        public class MainActivity extends Activity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                WebView webView = new WebView(this);
+                WebSettings webSettings = webView.getSettings();
+                webSettings.setJavaScriptEnabled(true);
+                webSettings.setDomStorageEnabled(true);
+                webView.setWebViewClient(new WebViewClient());
+                // الرابط الخاص بك على فيرسل
+                webView.loadUrl("https://chat-103.vercel.app");
+                setContentView(webView);
+            }
+        }
+        EOF
+
+        # ملفات بناء Gradle
+        echo "include(':app')" > myapp/settings.gradle
+        
+        cat << 'EOF' > myapp/build.gradle
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.1.0'
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        EOF
+
+        cat << 'EOF' > myapp/app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+        android {
+            namespace 'com.chat103.app'
+            compileSdk 33
+            defaultConfig {
+                applicationId "com.chat103.app"
+                minSdk 21
+                targetSdk 33
+                versionCode 1
+                versionName "1.0"
+            }
+        }
+        EOF
+
+        echo "sdk.dir=$ANDROID_HOME" > myapp/local.properties
+
+    - name: Build APK
+      working-directory: ./myapp
+      run: |
+        gradle wrapper
+        ./gradlew assembleDebug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: chat103-apk
+        path: myapp/app/build/outputs/apk/debug/app-debug.apk
+        
