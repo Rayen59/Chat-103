@@ -36,6 +36,7 @@ interface AdminPanelModalProps {
   onUserUpdated?: (user: User) => void;
   onOpenConversation?: (conversationId: string, messageId?: string) => void;
   onOpenGroup?: (groupId: string) => void;
+  onOpenReportTarget?: (report: UserReport) => void;
 }
 
 interface JudicialCaseData {
@@ -100,7 +101,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onOpenMKChannel,
   onUserUpdated,
   onOpenConversation,
-  onOpenGroup
+  onOpenGroup,
+  onOpenReportTarget
 }) => {
   const [activeTab, setActiveTab] = useState<"reports" | "judicial" | "bans" | "broadcast" | "users">("reports");
   const [reports, setReports] = useState<UserReport[]>([]);
@@ -905,14 +907,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                           <div className="flex items-center space-x-1.5 shrink-0 flex-wrap gap-1.5">
                             {/* Direct Action: Enter Conversation */}
-                            {((selectedReport.targetDetails?.conversationId) || selectedReport.targetType === "message") && onOpenConversation && (
+                            {((selectedReport.targetDetails?.conversationId) || selectedReport.targetType === "message") && (onOpenReportTarget || onOpenConversation) && (
                               <button
                                 onClick={() => {
-                                  const convId = selectedReport.targetDetails?.conversationId || (selectedReport.targetType === "message" ? selectedReport.targetId : undefined);
-                                  if (convId) {
-                                    onOpenConversation(convId, selectedReport.targetId);
+                                  if (onOpenReportTarget) {
+                                    onOpenReportTarget(selectedReport);
                                   } else {
-                                    handleOpenJudicialInvestigation(selectedReport);
+                                    const convId = selectedReport.targetDetails?.conversationId || (selectedReport.targetType === "message" ? selectedReport.targetId : undefined);
+                                    if (convId && onOpenConversation) {
+                                      onOpenConversation(convId, selectedReport.targetId);
+                                    } else {
+                                      handleOpenJudicialInvestigation(selectedReport);
+                                    }
                                   }
                                 }}
                                 className="px-3 py-1.5 rounded-xl bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-md shadow-[#3390ec]/20"
@@ -924,14 +930,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             )}
 
                             {/* Direct Action: Enter Group */}
-                            {((selectedReport.targetDetails?.groupId) || selectedReport.targetType === "group") && onOpenGroup && (
+                            {((selectedReport.targetDetails?.groupId) || selectedReport.targetType === "group") && (onOpenReportTarget || onOpenGroup) && (
                               <button
                                 onClick={() => {
-                                  const grpId = selectedReport.targetDetails?.groupId || (selectedReport.targetType === "group" ? selectedReport.targetId : undefined);
-                                  if (grpId) {
-                                    onOpenGroup(grpId);
+                                  if (onOpenReportTarget) {
+                                    onOpenReportTarget(selectedReport);
                                   } else {
-                                    handleOpenJudicialInvestigation(selectedReport);
+                                    const grpId = selectedReport.targetDetails?.groupId || (selectedReport.targetType === "group" ? selectedReport.targetId : undefined);
+                                    if (grpId && onOpenGroup) {
+                                      onOpenGroup(grpId);
+                                    } else {
+                                      handleOpenJudicialInvestigation(selectedReport);
+                                    }
                                   }
                                 }}
                                 className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-md shadow-indigo-600/20"
@@ -1289,9 +1299,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                           <div className="flex items-center space-x-2">
                             {/* Direct Open in Main Chat */}
-                            {judicialCase.conversation?.id && onOpenConversation && (
+                            {(judicialCase.conversation?.id || selectedReport) && (onOpenReportTarget || onOpenConversation) && (
                               <button
-                                onClick={() => onOpenConversation(judicialCase.conversation!.id, judicialCase.flaggedMessageId || undefined)}
+                                onClick={() => {
+                                  if (selectedReport && onOpenReportTarget) {
+                                    onOpenReportTarget(selectedReport);
+                                  } else if (judicialCase.conversation?.id && onOpenConversation) {
+                                    onOpenConversation(judicialCase.conversation.id, judicialCase.flaggedMessageId || undefined);
+                                  }
+                                }}
                                 className="px-3 py-1.5 rounded-lg bg-[#3390ec] hover:bg-[#2880db] text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-sm"
                                 title="Open this conversation in the main chat room"
                               >
@@ -1301,9 +1317,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             )}
 
                             {/* Direct Open Group */}
-                            {judicialCase.group?.id && onOpenGroup && (
+                            {(judicialCase.group?.id || (selectedReport && selectedReport.targetType === "group")) && (onOpenReportTarget || onOpenGroup) && (
                               <button
-                                onClick={() => onOpenGroup(judicialCase.group!.id)}
+                                onClick={() => {
+                                  if (selectedReport && onOpenReportTarget) {
+                                    onOpenReportTarget(selectedReport);
+                                  } else if (judicialCase.group?.id && onOpenGroup) {
+                                    onOpenGroup(judicialCase.group.id);
+                                  }
+                                }}
                                 className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer shadow-sm"
                                 title="Open this group in the main chat room"
                               >

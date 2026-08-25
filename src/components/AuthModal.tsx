@@ -39,11 +39,11 @@ const PRESET_AVATARS = [
 ];
 
 const QUICK_MOOD_TAGS = [
-  "🚀 Actif & Disponible",
-  "⚡ En plein travail",
-  "🎧 En écoute musicale",
-  "☕ Pause café",
-  "🛡️ Mode sécurisé"
+  "🚀 Active & Available",
+  "⚡ Deep in focus",
+  "🎧 Listening to music",
+  "☕ Coffee break",
+  "🛡️ Secure mode"
 ];
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
@@ -102,15 +102,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
 
     if (step === 1) {
       if (!username.trim()) {
-        setError("Veuillez saisir votre nom d'affichage.");
+        setError("Please enter your display name.");
         return;
       }
       if (!email.trim() || !email.includes("@")) {
-        setError("Veuillez saisir une adresse e-mail valide.");
+        setError("Please enter a valid email address.");
         return;
       }
       if (password.length < 6) {
-        setError("Le mot de passe doit comporter au moins 6 caractères.");
+        setError("Password must be at least 6 characters.");
         return;
       }
       setStep(2);
@@ -126,18 +126,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
 
     const selectedAvatar = customAvatar.trim() || avatar;
     const cleanEmail = email.trim().toLowerCase();
-    const cleanUsername = username.trim() || cleanEmail.split("@")[0] || "Utilisateur Wavegram";
+    const cleanUsername = username.trim() || cleanEmail.split("@")[0] || "Wavegram User";
 
     const createFallbackUser = (): User => ({
       id: "user_" + Math.random().toString(36).substring(2, 10),
       username: cleanUsername,
       email: cleanEmail,
       avatar: selectedAvatar,
-      bio: bio.trim() || "Bonjour ! J'utilise MK Wavegram.",
+      bio: bio.trim() || "Hey there! I am using MK Wavegram.",
       status: "online",
-      lastSeen: "À l'instant",
+      lastSeen: "Just now",
       createdAt: new Date().toISOString(),
-      badges: ["Membre Wavegram"],
+      badges: ["Wavegram Member"],
       blockedUserIds: [],
       closeFriendsUserIds: [],
       isPrivate: false,
@@ -156,7 +156,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
             username: cleanUsername,
             password,
             avatar: selectedAvatar,
-            bio: bio.trim() || "Bonjour ! J'utilise MK Wavegram.",
+            bio: bio.trim() || "Hey there! I am using MK Wavegram.",
             acceptedPrivacyTerms: true,
             privacyAcceptedAt: new Date().toISOString(),
             hasAccount: true
@@ -209,7 +209,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
       }
 
       if (!res.ok) {
-        throw new Error(data.error || "Échec de l'authentification. Veuillez vérifier vos identifiants.");
+        throw new Error(data.error || "Authentication failed. Please check your credentials.");
       }
 
       onLoginSuccess(data.user);
@@ -220,7 +220,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
         onLoginSuccess(localUser);
         return;
       }
-      setError(err.message || "Une erreur inattendue est survenue.");
+      setError(err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -239,7 +239,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
           </div>
           <h1 className="text-xl font-bold text-white tracking-tight">MK Wavegram</h1>
           <p className="text-xs text-[#7d8b99] mt-1">
-            {isSignUp ? "Créer un nouveau compte" : "Connexion avec votre e-mail"}
+            {isSignUp ? "Create a new account" : "Sign in with your email"}
           </p>
         </div>
 
@@ -255,7 +255,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
               !isSignUp ? "bg-[#3390ec] text-white" : "text-[#7d8b99] hover:text-white"
             }`}
           >
-            Se connecter
+            Sign In
           </button>
           <button
             type="button"
@@ -268,7 +268,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
               isSignUp ? "bg-[#3390ec] text-white" : "text-[#7d8b99] hover:text-white"
             }`}
           >
-            Créer un compte
+            Sign Up
           </button>
         </div>
 
@@ -285,14 +285,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-[#7d8b99] mb-1.5 uppercase tracking-wider">
-                Adresse E-mail
+                Email Address
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 absolute left-3.5 top-3 text-[#7d8b99]" />
                 <input
                   type="email"
                   required
-                  placeholder="votre.email@domaine.com"
+                  placeholder="your.email@domain.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-[#0e1621] border border-[#101921] rounded-xl py-2.5 pl-10 pr-3.5 text-sm text-white placeholder-[#7d8b99] focus:outline-none focus:border-[#3390ec] transition-colors"
@@ -302,7 +302,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
 
             <div>
               <label className="block text-xs font-semibold text-[#7d8b99] mb-1.5 uppercase tracking-wider">
-                Mot de passe
+                Password
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 absolute left-3.5 top-3 text-[#7d8b99]" />
@@ -333,7 +333,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
                 <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Se connecter</span>
+                  <span>Sign In</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -348,14 +348,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
               <form onSubmit={handleNextStep} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-[#7d8b99] mb-1.5 uppercase tracking-wider">
-                    Nom d'affichage
+                    Display Name
                   </label>
                   <div className="relative">
                     <UserIcon className="w-4 h-4 absolute left-3.5 top-3 text-[#7d8b99]" />
                     <input
                       type="text"
                       required
-                      placeholder="ex. Alex Morgan"
+                      placeholder="e.g. Alex Morgan"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="w-full bg-[#0e1621] border border-[#101921] rounded-xl py-2.5 pl-10 pr-3.5 text-sm text-white placeholder-[#7d8b99] focus:outline-none focus:border-[#3390ec]"
@@ -365,14 +365,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
 
                 <div>
                   <label className="block text-xs font-semibold text-[#7d8b99] mb-1.5 uppercase tracking-wider">
-                    Adresse E-mail
+                    Email Address
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 absolute left-3.5 top-3 text-[#7d8b99]" />
                     <input
                       type="email"
                       required
-                      placeholder="votre.email@domaine.com"
+                      placeholder="your.email@domain.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-[#0e1621] border border-[#101921] rounded-xl py-2.5 pl-10 pr-3.5 text-sm text-white placeholder-[#7d8b99] focus:outline-none focus:border-[#3390ec]"
@@ -382,14 +382,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
 
                 <div>
                   <label className="block text-xs font-semibold text-[#7d8b99] mb-1.5 uppercase tracking-wider">
-                    Mot de passe
+                    Password
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 absolute left-3.5 top-3 text-[#7d8b99]" />
                     <input
                       type={showPassword ? "text" : "password"}
                       required
-                      placeholder="Minimum 6 caractères"
+                      placeholder="Minimum 6 characters"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full bg-[#0e1621] border border-[#101921] rounded-xl py-2.5 pl-10 pr-10 text-sm text-white placeholder-[#7d8b99] focus:outline-none focus:border-[#3390ec]"
@@ -426,7 +426,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
                   type="submit"
                   className="w-full py-2.5 px-4 bg-[#3390ec] hover:bg-[#2481cc] text-white font-semibold text-sm rounded-xl transition-colors mt-4 flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>Continuer</span>
+                  <span>Continue</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
@@ -437,7 +437,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
                 <div className="flex items-center gap-4 bg-[#0e1621] p-3.5 rounded-xl border border-[#101921]">
                   <img
                     src={activeAvatarUrl}
-                    alt="Aperçu Avatar"
+                    alt="Avatar Preview"
                     className="w-16 h-16 rounded-full object-cover ring-2 ring-[#3390ec]/50 bg-[#242f3d]"
                   />
                   <div className="flex-1 space-y-2">
@@ -447,7 +447,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
                       className="w-full py-1.5 px-3 bg-[#3390ec] hover:bg-[#2481cc] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Télécharger photo</span>
+                      <span>Upload photo</span>
                     </button>
                     <input
                       type="file"
@@ -461,7 +461,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
 
                 <div>
                   <label className="block text-xs font-semibold text-[#7d8b99] uppercase tracking-wider mb-2">
-                    Ou sélectionner un avatar :
+                    Or choose an avatar:
                   </label>
                   <div className="grid grid-cols-5 gap-2">
                     {PRESET_AVATARS.map((url, idx) => (
@@ -491,13 +491,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
                     className="py-2.5 px-4 bg-[#242f3d] hover:bg-[#202b36] text-slate-300 font-semibold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors cursor-pointer"
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    <span>Retour</span>
+                    <span>Back</span>
                   </button>
                   <button
                     type="submit"
                     className="flex-1 py-2.5 px-4 bg-[#3390ec] hover:bg-[#2481cc] text-white font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>Continuer</span>
+                    <span>Continue</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -508,11 +508,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-[#7d8b99] mb-1.5 uppercase tracking-wider">
-                    Statut / Bio
+                    Status / Bio
                   </label>
                   <input
                     type="text"
-                    placeholder="ex. Disponible pour discuter"
+                    placeholder="e.g. Available to chat"
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     className="w-full bg-[#0e1621] border border-[#101921] rounded-xl py-2.5 px-3.5 text-sm text-white placeholder-[#7d8b99] focus:outline-none focus:border-[#3390ec]"
@@ -521,7 +521,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
 
                 <div>
                   <label className="block text-xs font-semibold text-[#7d8b99] uppercase tracking-wider mb-2">
-                    Suggestions rapides :
+                    Quick suggestions:
                   </label>
                   <div className="flex flex-wrap gap-1.5">
                     {QUICK_MOOD_TAGS.map((tag) => (
@@ -548,7 +548,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
                     className="py-2.5 px-4 bg-[#242f3d] hover:bg-[#202b36] text-slate-300 font-semibold text-xs rounded-xl flex items-center justify-center gap-1 transition-colors cursor-pointer"
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    <span>Retour</span>
+                    <span>Back</span>
                   </button>
                   <button
                     type="submit"
@@ -559,7 +559,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLoginSuccess }) => {
                       <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                     ) : (
                       <>
-                        <span>Terminer & Se connecter</span>
+                        <span>Finish & Sign In</span>
                         <Check className="w-4 h-4" />
                       </>
                     )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User, Message, Conversation, Group, ActiveCall, ReplyToMessage, ChatRequest, Story } from "./types";
+import { User, Message, Conversation, Group, ActiveCall, ReplyToMessage, ChatRequest, Story, UserReport } from "./types";
 import { AuthModal } from "./components/AuthModal";
 import { Sidebar } from "./components/Sidebar";
 import { ChatRoom } from "./components/ChatRoom";
@@ -235,27 +235,13 @@ export default function App() {
     const notif: AppNotification = {
       id: Math.random().toString(),
       type: "system",
-      title: "Signalement envoyé",
-      senderName: "Système MK",
-      text: "Votre signalement a été transmis à l'équipe de modération de MK Wavegram.",
+      title: "Report Submitted",
+      senderName: "MK Wavegram System",
+      text: "Your report has been successfully transmitted to the moderation team.",
       createdAt: new Date().toISOString()
     };
     setNotifications((prev) => [...prev, notif]);
   };
-
-  // Auto-open MK Official channel for Admin or ensure it is readily accessible
-  useEffect(() => {
-    if (
-      currentUser &&
-      (currentUser.role === "admin" ||
-        currentUser.email === "addmmin@gmail.com" ||
-        currentUser.email === "admin@gmail.com")
-    ) {
-      if (!activeConversationId) {
-        setActiveConversationId("conv_mk_official");
-      }
-    }
-  }, [currentUser?.id, currentUser?.role]);
   useEffect(() => {
     if (!currentUser) return;
 
@@ -724,6 +710,106 @@ export default function App() {
       }
     } catch (err) {
       console.error("Start DM error:", err);
+    }
+  };
+
+  // Admin Report direct target navigation handler
+  const handleOpenReportTarget = async (report: UserReport) => {
+    setShowAdminPanel(false);
+    setViewMode("chat");
+    setMobileShowChat(true);
+
+    try {
+      if (report.targetType === "group") {
+        const targetGroupId = report.targetDetails?.groupId || report.targetId;
+        let targetGroup = groups.find((g) => g.id === targetGroupId);
+        if (!targetGroup) {
+          const res = await fetch("/api/groups");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.groups) {
+              setGroups(data.groups);
+              targetGroup = (data.groups as Group[]).find((g) => g.id === targetGroupId);
+            }
+          }
+        }
+
+        let groupConv = conversations.find(
+          (c) => c.groupId === targetGroupId || (targetGroup && c.id === targetGroup.conversationId)
+        );
+
+        if (!groupConv && targetGroup) {
+          groupConv = {
+            id: targetGroup.conversationId || `group_${targetGroup.id}`,
+            type: "group",
+            groupId: targetGroup.id,
+            participants: targetGroup.memberIds || [],
+            updatedAt: targetGroup.createdAt || new Date().toISOString()
+          };
+          setConversations((prev) => [groupConv!, ...prev.filter((c) => c.id !== groupConv!.id)]);
+        }
+
+        if (groupConv) {
+          setActiveConversationId(groupConv.id);
+        } else if (targetGroup?.conversationId) {
+          setActiveConversationId(targetGroup.conversationId);
+        }
+        return;
+      }
+
+      if (report.targetType === "user") {
+        const targetUserId = report.targetDetails?.userId || report.targetId;
+        const targetUser = allUsers.find((u) => u.id === targetUserId);
+        if (targetUser) {
+          handleStartDMWithUser(targetUser.id);
+        }
+        return;
+      }
+
+      if (report.targetType === "message") {
+        const convId = report.targetDetails?.conversationId;
+        if (convId) {
+          const existingConv = conversations.find((c) => c.id === convId);
+          if (!existingConv) {
+            const res = await fetch(`/api/admin/judicial-case?conversationId=${convId}&reportId=${report.id}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.conversation) {
+                const fetchedConv: Conversation = data.conversation;
+                setConversations((prev) => [fetchedConv, ...prev.filter((c) => c.id !== fetchedConv.id)]);
+              }
+            }
+          }
+          setActiveConversationId(convId);
+          return;
+        } else {
+          // Fetch judicial case to resolve conversation
+          const res = await fetch(`/api/admin/judicial-case?reportId=${report.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.conversation) {
+              const fetchedConv: Conversation = data.conversation;
+              setConversations((prev) => [fetchedConv, ...prev.filter((c) => c.id !== fetchedConv.id)]);
+              setActiveConversationId(fetchedConv.id);
+              return;
+            } else if (data.group) {
+              const grp = data.group;
+              const gConv: Conversation = {
+                id: grp.conversationId || `group_${grp.id}`,
+                type: "group",
+                groupId: grp.id,
+                participants: grp.memberIds || [],
+                updatedAt: grp.createdAt || new Date().toISOString()
+              };
+              setConversations((prev) => [gConv, ...prev.filter((c) => c.id !== gConv.id)]);
+              setActiveConversationId(gConv.id);
+              return;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to open report target:", err);
     }
   };
 
@@ -1580,6 +1666,7 @@ export default function App() {
             setViewMode("chat");
             setMobileShowChat(true);
           }}
+          onOpenReportTarget={handleOpenReportTarget}
         />
       )}
 

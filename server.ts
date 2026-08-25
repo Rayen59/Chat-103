@@ -1350,16 +1350,19 @@ app.get("/api/messages/:conversationId", (req: Request, res: Response) => {
     return res.status(404).json({ error: "Conversation not found", messages: [] });
   }
 
-  // Strictly enforce that if user is removed or not a participant, they cannot fetch any messages
+  // Strictly enforce that if user is removed or not a participant, they cannot fetch any messages unless they are an admin
   if (userId) {
-    if (!conv.participants.includes(userId)) {
-      return res.status(403).json({ error: "You are no longer a participant in this conversation.", messages: [] });
-    }
+    const isAdminUser = !!checkAdminAccess(userId);
+    if (!isAdminUser) {
+      if (!conv.participants.includes(userId)) {
+        return res.status(403).json({ error: "You are no longer a participant in this conversation.", messages: [] });
+      }
 
-    if (conv.type === "group" && conv.groupId) {
-      const group = store.groups.find((g) => g.id === conv.groupId);
-      if (!group || !group.memberIds.includes(userId)) {
-        return res.status(403).json({ error: "You are no longer a member of this group.", messages: [] });
+      if (conv.type === "group" && conv.groupId) {
+        const group = store.groups.find((g) => g.id === conv.groupId);
+        if (!group || !group.memberIds.includes(userId)) {
+          return res.status(403).json({ error: "You are no longer a member of this group.", messages: [] });
+        }
       }
     }
   }
