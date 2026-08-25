@@ -260,25 +260,25 @@ export default function App() {
         const notif: AppNotification = {
           id: Math.random().toString(),
           type: "message",
-          title: "Nouveau message",
-          senderName: newMsg.senderName || sender?.username || "Utilisateur MK",
+          title: "New message",
+          senderName: newMsg.senderName || sender?.username || "MK Wavegram User",
           senderAvatar: newMsg.senderAvatar || sender?.avatar,
           text:
             newMsg.type === "voice"
-              ? "🎤 Message vocal"
+              ? "🎤 Voice message"
               : newMsg.type === "image"
-              ? "📷 Photo envoyée"
+              ? "📷 Photo"
               : newMsg.type === "video"
-              ? "🎥 Vidéo envoyée"
+              ? "🎥 Video"
               : newMsg.type === "file"
-              ? "📎 Fichier joint"
+              ? "📎 Attached file"
               : newMsg.type === "gif"
-              ? "👾 GIF envoyé"
+              ? "👾 GIF"
               : newMsg.type === "sticker"
-              ? "🪶 Sticker animé"
+              ? "🪶 Animated sticker"
               : newMsg.type === "poll"
-              ? "📊 Sondage créé"
-              : newMsg.text || "Nouveau message",
+              ? "📊 Poll"
+              : newMsg.text || "New message",
           conversationId: newMsg.conversationId,
           createdAt: newMsg.createdAt
         };
@@ -295,9 +295,28 @@ export default function App() {
           return [...filtered, newMsg];
         });
       }
-      // Update conversations list last message
-      setConversations((prev) =>
-        prev.map((c) => {
+
+      // Update or insert conversation in conversations list
+      setConversations((prev) => {
+        const exists = prev.some((c) => c.id === newMsg.conversationId);
+        if (!exists) {
+          const newConv: Conversation = {
+            id: newMsg.conversationId,
+            type: newMsg.groupId ? "group" : "dm",
+            groupId: newMsg.groupId,
+            participants: [currentUser.id, newMsg.senderId],
+            lastMessage: {
+              text: newMsg.text || (newMsg.type === "sticker" ? "Animated sticker" : "Media file"),
+              senderId: newMsg.senderId,
+              senderName: newMsg.senderName,
+              createdAt: newMsg.createdAt
+            },
+            updatedAt: newMsg.createdAt
+          };
+          return [newConv, ...prev];
+        }
+
+        return prev.map((c) => {
           if (c.id === newMsg.conversationId) {
             return {
               ...c,
@@ -311,8 +330,8 @@ export default function App() {
             };
           }
           return c;
-        })
-      );
+        });
+      });
     });
 
     // Official broadcast alert event listener
@@ -811,6 +830,80 @@ export default function App() {
     } catch (err) {
       console.error("Failed to open report target:", err);
     }
+  };
+
+  // Universal bulletproof conversation selection & navigation handler
+  const handleSelectConversation = async (convOrGroupId: string) => {
+    if (!convOrGroupId) return;
+    setViewMode("chat");
+    setMobileShowChat(true);
+
+    // 1. Direct match in conversations list
+    const found = conversations.find(
+      (c) => c.id === convOrGroupId || (c.groupId && c.groupId === convOrGroupId)
+    );
+    if (found) {
+      setActiveConversationId(found.id);
+      return;
+    }
+
+    // 2. Direct match in groups list
+    const matchingGroup = groups.find(
+      (g) => g.id === convOrGroupId || g.conversationId === convOrGroupId
+    );
+    if (matchingGroup) {
+      const gConv: Conversation = {
+        id: matchingGroup.conversationId || `group_${matchingGroup.id}`,
+        type: "group",
+        groupId: matchingGroup.id,
+        participants: matchingGroup.memberIds || [],
+        updatedAt: matchingGroup.createdAt || new Date().toISOString()
+      };
+      setConversations((prev) => [gConv, ...prev.filter((c) => c.id !== gConv.id)]);
+      setActiveConversationId(gConv.id);
+      return;
+    }
+
+    // 3. User ID match (direct DM)
+    const matchingUser = allUsers.find((u) => u.id === convOrGroupId);
+    if (matchingUser && currentUser) {
+      handleStartDMWithUser(matchingUser.id);
+      return;
+    }
+
+    // 4. Fetch fresh conversations from server
+    if (currentUser) {
+      try {
+        const res = await fetch(`/api/conversations?userId=${currentUser.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.conversations && data.conversations.length > 0) {
+            setConversations(data.conversations);
+            const serverFound = (data.conversations as Conversation[]).find(
+              (c) => c.id === convOrGroupId || c.groupId === convOrGroupId
+            );
+            if (serverFound) {
+              setActiveConversationId(serverFound.id);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch fresh conversations on selection:", err);
+      }
+    }
+
+    // 5. Fallback: synthesize conversation entry and set active
+    const isGrp = convOrGroupId.startsWith("group_") || convOrGroupId.startsWith("grp_");
+    const fallbackConv: Conversation = {
+      id: convOrGroupId,
+      type: isGrp ? "group" : "dm",
+      groupId: isGrp ? convOrGroupId : undefined,
+      participants: currentUser ? [currentUser.id] : [],
+      updatedAt: new Date().toISOString()
+    };
+    setConversations((prev) => [fallbackConv, ...prev.filter((c) => c.id !== fallbackConv.id)]);
+    setActiveConversationId(convOrGroupId);
   };
 
   // Chat Request Handlers
@@ -1407,10 +1500,28 @@ export default function App() {
     return <AuthModal onLoginSuccess={handleLoginSuccess} />;
   }
 
-  const activeConv = conversations.find((c) => c.id === activeConversationId);
+  const matchingGroupForActive = groups.find(
+    (g) => g.id === activeConversationId || g.conversationId === activeConversationId
+  );
+  const activeConv =
+    conversations.find(
+      (c) => c.id === activeConversationId || (c.groupId && c.groupId === activeConversationId)
+    ) ||
+    (activeConversationId
+      ? {
+          id: matchingGroupForActive?.conversationId || activeConversationId,
+          type: (matchingGroupForActive || activeConversationId.startsWith("group_") || activeConversationId.startsWith("grp_")
+            ? "group"
+            : "dm") as "group" | "dm",
+          groupId: matchingGroupForActive?.id || (activeConversationId.startsWith("group_") ? activeConversationId : undefined),
+          participants: matchingGroupForActive?.memberIds || (currentUser ? [currentUser.id] : []),
+          updatedAt: new Date().toISOString()
+        }
+      : undefined);
+
   const activeGroup = activeConv?.groupId
     ? groups.find((g) => g.id === activeConv.groupId)
-    : undefined;
+    : matchingGroupForActive;
 
   return (
     <div className="fixed inset-0 flex h-[100dvh] max-h-[100dvh] w-full bg-[#050814] text-slate-100 overflow-hidden font-sans select-none">
@@ -1427,11 +1538,7 @@ export default function App() {
           activeConversationId={activeConversationId}
           activeTab={sidebarTab}
           setActiveTab={setSidebarTab}
-          onSelectConversation={(id) => {
-            setActiveConversationId(id);
-            setViewMode("chat");
-            setMobileShowChat(true);
-          }}
+          onSelectConversation={handleSelectConversation}
           onStartDMWithUser={handleStartDMWithUser}
           onSelectUserProfile={(user) => setSelectedUserProfile(user)}
           onAcceptRequest={handleAcceptChatRequest}
@@ -1650,21 +1757,11 @@ export default function App() {
           }}
           onOpenConversation={(convId) => {
             setShowAdminPanel(false);
-            setActiveConversationId(convId);
-            setViewMode("chat");
-            setMobileShowChat(true);
+            handleSelectConversation(convId);
           }}
           onOpenGroup={(groupId) => {
             setShowAdminPanel(false);
-            const targetGroup = groups.find((g) => g.id === groupId);
-            const conv = conversations.find((c) => c.groupId === groupId || c.id === targetGroup?.conversationId);
-            if (conv) {
-              setActiveConversationId(conv.id);
-            } else if (targetGroup?.conversationId) {
-              setActiveConversationId(targetGroup.conversationId);
-            }
-            setViewMode("chat");
-            setMobileShowChat(true);
+            handleSelectConversation(groupId);
           }}
           onOpenReportTarget={handleOpenReportTarget}
         />
@@ -1690,9 +1787,7 @@ export default function App() {
         onDismiss={(id) => setNotifications((prev) => prev.filter((n) => n.id !== id))}
         onSelectNotification={(notif) => {
           if (notif.conversationId) {
-            setActiveConversationId(notif.conversationId);
-            setViewMode("chat");
-            setMobileShowChat(true);
+            handleSelectConversation(notif.conversationId);
           }
           setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
         }}

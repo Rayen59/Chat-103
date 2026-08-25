@@ -101,6 +101,7 @@ export interface PollData {
 export interface Message {
   id: string;
   conversationId: string;
+  groupId?: string;
   senderId: string;
   senderName: string;
   senderAvatar: string;

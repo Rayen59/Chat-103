@@ -799,10 +799,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 const avatarColor = getTelegramAvatarColor(group.name);
                 const initials = getTelegramInitials(group.name);
 
+                const targetConvId = conv ? conv.id : (group.conversationId || group.id);
+
                 return (
                   <div
                     key={group.id}
-                    className="w-full px-3.5 py-3 flex items-center justify-between gap-3.5 hover:bg-[#202b36] transition-colors"
+                    onClick={() => {
+                      if (isMember) {
+                        onSelectConversation(targetConvId);
+                      }
+                    }}
+                    className={`w-full px-3.5 py-3 flex items-center justify-between gap-3.5 hover:bg-[#202b36] transition-colors ${
+                      isMember ? "cursor-pointer" : ""
+                    }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       {group.avatar ? (
@@ -833,17 +842,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                     </div>
 
-                    {isMember && conv ? (
+                    {isMember ? (
                       <button
-                        onClick={() => onSelectConversation(conv.id)}
-                        className="px-3.5 py-1.5 rounded-lg bg-[#2481cc] hover:bg-[#3390ec] text-white text-xs font-semibold shrink-0 transition-colors"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectConversation(targetConvId);
+                        }}
+                        className="px-3.5 py-1.5 rounded-lg bg-[#2481cc] hover:bg-[#3390ec] text-white text-xs font-semibold shrink-0 transition-colors cursor-pointer"
                       >
                         Open
                       </button>
                     ) : (
                       <button
-                        onClick={onJoinGroupClick}
-                        className="px-3.5 py-1.5 rounded-lg bg-[#202b36] hover:bg-[#242f3d] text-white text-xs font-semibold shrink-0 border border-[#101921] transition-colors"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onJoinGroupClick();
+                        }}
+                        className="px-3.5 py-1.5 rounded-lg bg-[#202b36] hover:bg-[#242f3d] text-white text-xs font-semibold shrink-0 border border-[#101921] transition-colors cursor-pointer"
                       >
                         Join
                       </button>

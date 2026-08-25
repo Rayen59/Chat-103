@@ -460,7 +460,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   };
 
   // Other participant in DM
-  const otherUserId = conversation.participants.find((id) => id !== currentUser.id);
+  const otherUserId = conversation.participants.find((id) => id !== currentUser.id) || conversation.participants[0];
   const otherUser = allUsers.find((u) => u.id === otherUserId);
 
   const isOfficialChannel = conversation.id === "conv_mk_official" || !!conversation.isOfficialChannel;
@@ -477,8 +477,12 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({
   const isOtherUserBlocked = conversation.type === "dm" && otherUserId ? (currentUser.blockedUserIds || []).includes(otherUserId) : false;
   const isMeBlockedByOther = conversation.type === "dm" && otherUser ? (otherUser.blockedUserIds || []).includes(currentUser.id) : false;
 
-  const title = isOfficialChannel ? "MK Wavegram Official ⚡" : conversation.type === "group" ? group?.name || "Group Chat" : otherUser?.username || "Chat";
-  const avatar = conversation.type === "group" ? group?.avatar : otherUser?.avatar;
+  const title = isOfficialChannel
+    ? "MK Wavegram Official ⚡"
+    : conversation.type === "group"
+    ? group?.name || conversation.name || "Group Chat"
+    : otherUser?.username || conversation.name || (otherUserId ? `@${otherUserId}` : "Direct Chat");
+  const avatar = conversation.type === "group" ? (group?.avatar || conversation.avatar) : (otherUser?.avatar || conversation.avatar);
   const isOnline = conversation.type === "dm" && otherUser?.status === "online";
 
   // Auto focus input when switching conversations

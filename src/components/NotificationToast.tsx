@@ -81,7 +81,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
                   {notif.senderName}
                 </span>
                 <span className="text-[10px] text-[#7d8b99] font-medium shrink-0">
-                  À l'instant
+                  Just now
                 </span>
               </div>
 
@@ -92,7 +92,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
               {/* Direct action button banner */}
               <div className="mt-2 flex items-center justify-between">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#3390ec]/20 group-hover:bg-[#3390ec] text-[#3390ec] group-hover:text-white text-[10px] font-bold transition-all">
-                  <span>Ouvrir</span>
+                  <span>Open</span>
                   <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                 </span>
               </div>
@@ -106,7 +106,7 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({
                 onDismiss(notif.id);
               }}
               className="p-1 rounded-lg text-[#7d8b99] hover:text-white hover:bg-[#202b36] transition-colors shrink-0 -mr-1 -mt-1 cursor-pointer"
-              title="Fermer"
+              title="Dismiss"
             >
               <X className="w-4 h-4" />
             </button>
